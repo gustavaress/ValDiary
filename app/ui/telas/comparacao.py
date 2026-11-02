@@ -11,6 +11,7 @@ from app.analysis.comparacao import (
     separar_grupos,
 )
 from app.analysis.dataframe import filtrar_periodo, registros_para_dataframe
+from app.analysis.medicacao import MIN_DIAS_POR_FAIXA, comparar_medicamentos
 from app.analysis.filtros import filtrar
 from app.ui import tema
 from app.ui.componentes import CartaoInfo, Secao, Tabela
@@ -110,6 +111,23 @@ class TelaComparacao(TelaBase):
                                            text_color=tema.COR_TEXTO_SECUNDARIO)
         self._habitos_vazio.pack(anchor="w", pady=(6, 0))
 
+        secao = Secao(area, "Medicamentos × desempenho",
+                      "Desempenho nos dias jogados conforme quanto tempo antes do início da sessão cada "
+                      "medicamento foi tomado (precisa do horário do medicamento e de \"Começou às\"). "
+                      f"Indica se o desempenho PODE ter relação com o horário do medicamento, não que ele "
+                      f"causou a diferença. Com menos de {MIN_DIAS_POR_FAIXA} dias numa linha, pode ser acaso.")
+        secao.grid(row=6, column=0, columnspan=3, sticky="nsew", padx=6, pady=6)
+        self._tabela_medicamentos = Tabela(secao.conteudo, [
+            ("medicamento", "Medicamento", 150, "w"), ("momento", "Momento", 170, "w"),
+            ("dias", "Dias", 60, "center"), ("kd", "K/D", 60, "center"), ("acs", "ACS", 60, "center"),
+            ("hs", "HS%", 60, "center"), ("winrate", "Winrate", 70, "center"),
+            ("mira", "Mira", 55, "center"), ("concentracao", "Conc.", 55, "center"),
+        ], altura_automatica=True)
+        self._tabela_medicamentos.pack(fill="x")
+        self._medicamentos_vazio = ctk.CTkLabel(secao.conteudo, text="", font=tema.fonte_pequena(),
+                                                text_color=tema.COR_TEXTO_SECUNDARIO)
+        self._medicamentos_vazio.pack(anchor="w", pady=(6, 0))
+
     def ao_exibir(self) -> None:
         self._registros, _ = self.repositorio.carregar_todos()
         self._atualizar()
@@ -146,6 +164,25 @@ class TelaComparacao(TelaBase):
         ])
         self._habitos_vazio.configure(
             text="" if habitos else "Nenhum item (bebida, medicamento, agente...) apareceu em 2 ou mais dias ainda.")
+        self._atualizar_medicamentos(registros)
+
+    def _atualizar_medicamentos(self, registros) -> None:
+        def valor(media, casas, sufixo=""):
+            return numero(media, casas, sufixo) if media is not None else "—"
+
+        linhas = []
+        for comparacao in comparar_medicamentos(registros, self.janela.rr_por_dia(self._registros)):
+            for i, grupo in enumerate(comparacao.grupos):
+                m = grupo.medias
+                momento = grupo.faixa + ("" if grupo.suficiente else "  (poucos dados)")
+                linhas.append((
+                    comparacao.nome if i == 0 else "", momento, grupo.dias,
+                    valor(m["kd"], 2), valor(m["acs"], 0), valor(m["hs_pct"], 1, "%"),
+                    valor(m["winrate_pct"], 0, "%"), valor(m["mira"], 1), valor(m["concentracao"], 1),
+                ))
+        self._tabela_medicamentos.preencher(linhas)
+        self._medicamentos_vazio.configure(text="" if linhas else (
+            "Ainda não há dias jogados com horário do medicamento e horário de início da sessão."))
 
     def _atualizar_aviso(self, n_bons: int, n_ruins: int) -> None:
         if n_bons >= MIN_DIAS_POR_GRUPO and n_ruins >= MIN_DIAS_POR_GRUPO:

@@ -23,6 +23,7 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
 | 🎮 | **Registro por partida** (agente pela bandeja de fotos, resultado, K/D/A, HS%, ACS) com resumo do dia calculado | ✅ |
 | 📅 | Validador de data: não deixa registrar dias já preenchidos nem datas futuras | ✅ |
+| 💊 | **Medicamentos × desempenho**: quanto tempo antes do jogo cada medicamento foi tomado e como o desempenho variou | ✅ |
 | 🏆 | **Ranking**: aba própria para definir o elo; o app aplica o RR de cada partida (com proteção contra rebaixamento) | ✅ |
 | 🧮 | Cálculo automático de horas de sono, K/D, KDA e winrate | ✅ |
 | 💾 | **Rascunho automático**: nada se perde se o app fechar antes de salvar | ✅ |

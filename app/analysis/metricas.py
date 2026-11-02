@@ -29,6 +29,7 @@ METRICAS = [
     Metrica("disposicao_mental", "Disposição mental", "Rotina", nota=True),
     Metrica("estresse", "Estresse", "Rotina", nota=True),
     Metrica("inicio_jogo", "Horário que começou a jogar", "Valorant", hora=True),
+    Metrica("medicacao_antes_jogo_h", "Medicamento antes do jogo", "Rotina", 1, "h"),
     Metrica("partidas", "Partidas", "Valorant", 1),
     Metrica("winrate_pct", "Winrate", "Valorant", 1, "%"),
     Metrica("kd", "K/D", "Valorant", 2),

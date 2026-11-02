@@ -12,6 +12,7 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
+from app.analysis.medicacao import medicamentos_antes_do_horario
 from app.analysis.ranking import ranking_no_inicio_do_dia
 from app.models import RegistroDia, calcular_horas_sono, validar_registro
 from app.models.datas import data_livre_mais_recente, erro_data_nova, proxima_data_livre
@@ -81,6 +82,8 @@ class TelaRegistro(TelaBase):
             segmented_button_unselected_color=tema.COR_CARTAO,
             segmented_button_unselected_hover_color=tema.COR_CARTAO_HOVER,
             anchor="w",
+            # Medicamentos são editados na aba Rotina: o cruzamento é refeito ao trocar de aba.
+            command=lambda: self._atualizar_medicacao_jogo(),
         )
         # O CTkTabview não expõe a fonte/altura das abas no construtor: ajustamos o
         # botão segmentado interno para seguir a tipografia display do app.
@@ -224,12 +227,16 @@ class TelaRegistro(TelaBase):
         jogou.pack(anchor="w")
         rotulo.grid(row=0, column=0, sticky="w", padx=(0, 18), pady=4)
         self._campos["jogou"] = jogou
-        inicio = CampoHorario(secao.conteudo, "Começou às")
+        inicio = CampoHorario(secao.conteudo, "Começou às", ao_mudar=self._atualizar_medicacao_jogo)
         fim = CampoHorario(secao.conteudo, "Parou às")
         inicio.grid(row=0, column=1, sticky="w", padx=(0, 18), pady=4)
         fim.grid(row=0, column=2, sticky="w", pady=4)
         self._campos["jogo_inicio"] = inicio
         self._campos["jogo_fim"] = fim
+        # Cruzamento com a aba Rotina: quanto tempo antes do jogo cada medicamento foi tomado.
+        self._rotulo_medicacao = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
+                                              font=tema.fonte_pequena(), text_color=tema.COR_TEXTO_SECUNDARIO)
+        self._rotulo_medicacao.grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         secao = Secao(area, "Autoavaliação")
         secao.pack(fill="x", pady=10)
@@ -288,12 +295,25 @@ class TelaRegistro(TelaBase):
             campo.set(formulario.get(chave))
         self._atualizar_horas_auto()
         self._atualizar_resumo()
+        self._atualizar_medicacao_jogo()
 
     def _formulario_vazio(self, data: date) -> dict:
         return registro_para_formulario(RegistroDia(data=data))
 
     def _tem_alteracoes(self) -> bool:
         return self._carregado and _sem_data(self._ler()) != self._base
+
+    def _atualizar_medicacao_jogo(self) -> None:
+        inicio = self._campos["jogo_inicio"].get()
+        medicamentos = [(m.get("nome"), m.get("horario")) for m in self._campos["medicamentos"].get()]
+        antes = medicamentos_antes_do_horario(inicio, medicamentos)
+        if antes:
+            texto = "Medicamentos antes do jogo:  " + "   ·   ".join(m.texto for m in antes)
+        elif inicio and any(h for _, h in medicamentos):
+            texto = "Nenhum medicamento foi tomado antes do início do jogo."
+        else:
+            texto = ""
+        self._rotulo_medicacao.configure(text=texto)
 
     def _atualizar_refeicoes(self) -> None:
         """Habilita horário e descrição só das refeições marcadas."""

@@ -8,6 +8,7 @@ from datetime import date, timedelta
 
 import pandas as pd
 
+from app.analysis.medicacao import horas_desde_ultimo_medicamento
 from app.analysis.metricas import METRICAS
 from app.models import RegistroDia
 
@@ -52,6 +53,7 @@ def registros_para_dataframe(registros: list[RegistroDia], rr_por_dia: dict | No
             "disposicao_mental": rotina.disposicao_mental,
             "estresse": rotina.estresse,
             "inicio_jogo": hora_decimal(jogo.horario_inicio),
+            "medicacao_antes_jogo_h": horas_desde_ultimo_medicamento(registro),
             "partidas": resumo.partidas,
             "winrate_pct": resumo.winrate_pct,
             "kd": resumo.kd,
