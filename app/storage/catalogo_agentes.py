@@ -1,6 +1,6 @@
 """Catálogo de agentes (nome, função e imagem), lido de assets/agentes/agentes.json.
 
-O arquivo é gerado por scripts/baixar_agentes.py. Se ele não existir, o
+O arquivo é gerado por scripts/gerar_agentes.py. Se ele não existir, o
 catálogo fica vazio e a tela avisa como gerá-lo.
 """
 

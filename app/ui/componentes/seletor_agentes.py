@@ -37,8 +37,8 @@ class SeletorAgentes(ctk.CTkFrame):
         self._imagens: dict[str, tuple] = {}
 
         if not catalogo:
-            ctk.CTkLabel(self, text="Imagens dos agentes não encontradas. Para baixá-las, rode no terminal:\n"
-                                    "python scripts/baixar_agentes.py",
+            ctk.CTkLabel(self, text="Imagens dos agentes não encontradas. Para gerá-las, rode no terminal:\n"
+                                    "python scripts/gerar_agentes.py",
                          justify="left", font=tema.fonte_normal(), text_color=tema.COR_AVISO).pack(anchor="w")
 
         grade = ctk.CTkFrame(self, fg_color="transparent")
