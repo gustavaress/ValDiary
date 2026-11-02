@@ -11,7 +11,15 @@ Este módulo não depende da interface, por isso pode ser testado sozinho.
 
 from datetime import date
 
-from app.models import Bebida, Classificacao, Medicamento, RegistroDia, Valorant, calcular_horas_sono
+from app.models import (
+    AgenteJogado,
+    Bebida,
+    Classificacao,
+    Medicamento,
+    RegistroDia,
+    Valorant,
+    calcular_horas_sono,
+)
 from app.ui import conversao
 from app.ui.conversao import ErroConversao, para_campo
 
@@ -67,11 +75,12 @@ def registro_para_formulario(registro: RegistroDia) -> dict:
         "acs": para_campo(jogo.acs),
         "adr": para_campo(jogo.adr),
         "hs_pct": para_campo(jogo.hs_pct),
-        "agentes": ", ".join(jogo.agentes),
+        "agentes": [{"nome": a.nome, "partidas": para_campo(a.partidas)} for a in jogo.agentes],
         "notas_jogo": jogo.notas or "",
     }
     for chave, atributo, _ in _REFEICOES:
         refeicao = getattr(rotina.alimentacao, atributo)
+        formulario[f"{chave}_realizada"] = bool(refeicao.realizada)
         formulario[f"{chave}_horario"] = refeicao.horario or ""
         formulario[f"{chave}_descricao"] = refeicao.descricao or ""
     for nota in _NOTAS_AVALIACAO:
@@ -108,6 +117,9 @@ class _Leitor:
     def hora_valor(self, valor: str, rotulo: str) -> str | None:
         return self._converter(conversao.hora, valor, rotulo)
 
+    def inteiro_valor(self, valor: str, rotulo: str) -> int | None:
+        return self._converter(conversao.inteiro, valor, rotulo)
+
 
 def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list[str]]:
     """Retorna (registro, []) se tudo foi convertido, ou (None, erros)."""
@@ -124,7 +136,11 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     rotina.sono.qualidade = formulario.get("sono_qualidade")
 
     for chave, atributo, nome in _REFEICOES:
+        # Refeição desmarcada: horário e descrição são ignorados (ficam null).
+        if not formulario.get(f"{chave}_realizada"):
+            continue
         refeicao = getattr(rotina.alimentacao, atributo)
+        refeicao.realizada = True
         refeicao.horario = ler.hora(f"{chave}_horario", f"{nome} (horário)")
         refeicao.descricao = ler.texto(f"{chave}_descricao")
     rotina.alimentacao.outros = ler.texto("alimentacao_outros")
@@ -168,7 +184,14 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     jogo.acs = ler.decimal("acs", "ACS")
     jogo.adr = ler.decimal("adr", "ADR")
     jogo.hs_pct = ler.decimal("hs_pct", "HS%")
-    jogo.agentes = conversao.lista_de_nomes(formulario.get("agentes"))
+    jogo.agentes = [
+        AgenteJogado(nome=a["nome"], partidas=ler.inteiro_valor(a.get("partidas"), f"Partidas com {a['nome']}"))
+        for a in formulario.get("agentes") or []
+    ]
+    # Total de partidas vazio: usamos a soma das partidas por agente.
+    soma_agentes = sum(a.partidas or 0 for a in jogo.agentes)
+    if jogo.partidas is None and soma_agentes:
+        jogo.partidas = soma_agentes
     for nota in _NOTAS_AVALIACAO:
         setattr(jogo.avaliacao, nota, formulario.get(nota))
     jogo.notas = ler.texto("notas_jogo")

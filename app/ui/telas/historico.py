@@ -192,7 +192,9 @@ class TelaHistorico(TelaBase):
             self._detalhe_titulo.configure(text=data_extensa(registro.data))
             partes = []
             if registro.valorant.agentes:
-                partes.append(f"Agentes: {', '.join(registro.valorant.agentes)}")
+                agentes = ", ".join(f"{a.nome} ({a.partidas})" if a.partidas else a.nome
+                                    for a in registro.valorant.agentes)
+                partes.append(f"Agentes: {agentes}")
             if registro.valorant.notas:
                 partes.append(f"Partidas: {registro.valorant.notas}")
             if registro.rotina.observacoes:

@@ -18,7 +18,7 @@ def texto_pesquisavel(registro: RegistroDia) -> str:
     partes = [
         rotina.observacoes, registro.valorant.notas, rotina.alimentacao.outros,
         rotina.alimentacao.cafe_da_manha.descricao, rotina.alimentacao.almoco.descricao,
-        rotina.alimentacao.jantar.descricao, " ".join(registro.valorant.agentes),
+        rotina.alimentacao.jantar.descricao, " ".join(registro.valorant.nomes_agentes),
     ]
     return normalizar_texto(" ".join(p for p in partes if p))
 

@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from app.models import Bebida, Classificacao, Medicamento, RegistroDia
+from app.models import AgenteJogado, Bebida, Classificacao, Medicamento, RegistroDia, validar_registro
 from app.ui import conversao
 from app.ui.conversao import ErroConversao
 from app.ui.mapeamento_registro import (
@@ -32,15 +32,12 @@ def test_decimal_aceita_virgula():
     assert conversao.decimal("  ", "x") is None
 
 
-def test_lista_de_nomes_remove_repetidos():
-    assert conversao.lista_de_nomes("Jett, raze; Jett ,, Omen") == ["Jett", "raze", "Omen"]
-
-
 def _registro() -> RegistroDia:
     r = RegistroDia(data=date(2026, 11, 2), classificacao=Classificacao.EXCELENTE)
     r.rotina.sono.dormiu_as = "23:30"
     r.rotina.sono.acordou_as = "07:30"
     r.rotina.sono.qualidade = 8
+    r.rotina.alimentacao.almoco.realizada = True
     r.rotina.alimentacao.almoco.horario = "12:30"
     r.rotina.alimentacao.almoco.descricao = "Arroz e frango"
     r.rotina.agua_litros = 2.5
@@ -59,7 +56,7 @@ def _registro() -> RegistroDia:
     r.valorant.acs = 240.5
     r.valorant.adr = 150
     r.valorant.hs_pct = 27.3
-    r.valorant.agentes = ["Jett", "Raze"]
+    r.valorant.agentes = [AgenteJogado("Jett", 3), AgenteJogado("Raze", 1)]
     r.valorant.avaliacao.mira = 9
     r.valorant.notas = "Microajustes fáceis"
     return r
@@ -120,3 +117,34 @@ def test_derivados_ao_vivo_ignoram_valores_invalidos():
     jogo = derivados_ao_vivo(formulario)
     assert jogo.kd == 1.4
     assert jogo.kda == 1.4  # assistências inválidas contam como 0
+
+
+def test_refeicao_desmarcada_ignora_os_campos():
+    formulario = registro_para_formulario(_registro())
+    assert formulario["almoco_realizada"] is True
+    formulario["almoco_realizada"] = False  # desmarcou, mas o texto continua na tela
+    registro, _ = formulario_para_registro(formulario)
+    almoco = registro.rotina.alimentacao.almoco
+    assert (almoco.realizada, almoco.horario, almoco.descricao) == (None, None, None)
+
+
+def test_refeicao_marcada_sem_detalhes():
+    formulario = registro_para_formulario(RegistroDia(data=date(2026, 11, 2)))
+    formulario["cafe_realizada"] = True
+    registro, _ = formulario_para_registro(formulario)
+    assert registro.rotina.alimentacao.cafe_da_manha.realizada is True
+
+
+def test_total_de_partidas_vazio_usa_soma_dos_agentes():
+    formulario = registro_para_formulario(RegistroDia(data=date(2026, 11, 2)))
+    formulario["agentes"] = [{"nome": "Jett", "partidas": "2"}, {"nome": "Omen", "partidas": "1"}]
+    registro, _ = formulario_para_registro(formulario)
+    assert registro.valorant.partidas == 3
+    assert registro.valorant.nomes_agentes == ["Jett", "Omen"]
+
+
+def test_soma_dos_agentes_maior_que_total_e_erro():
+    r = _registro()  # 4 partidas no total
+    r.valorant.agentes = [AgenteJogado("Jett", 3), AgenteJogado("Raze", 2)]
+    erros = validar_registro(r)
+    assert any("soma das partidas por agente" in e for e in erros)

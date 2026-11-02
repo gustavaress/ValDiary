@@ -3,6 +3,8 @@ from datetime import date
 
 import pytest
 
+from app import config
+
 from app.models import Classificacao, RegistroDia
 from app.storage import (
     ArquivoCorrompidoError,
@@ -32,7 +34,7 @@ def test_cria_arquivo_da_semana_automaticamente(repo):
     conteudo = json.loads(arquivo.read_text(encoding="utf-8"))
     assert conteudo["semana"] == 45
     assert conteudo["periodo"] == {"inicio": "2026-11-02", "fim": "2026-11-08"}
-    assert conteudo["versao_schema"] == 1
+    assert conteudo["versao_schema"] == config.VERSAO_SCHEMA
 
 
 def test_dias_da_mesma_semana_vao_para_o_mesmo_arquivo_ordenados(repo):

@@ -85,4 +85,11 @@ def validar_registro(registro: RegistroDia) -> list[str]:
     if jogo.partidas is not None and sum(resultados) > jogo.partidas:
         erros.append("Vitórias + derrotas + empates não pode ser maior que o número de partidas.")
 
+    for agente in jogo.agentes:
+        _checar_nao_negativo(erros, f"Partidas com {agente.nome}", agente.partidas)
+    soma_agentes = sum(a.partidas or 0 for a in jogo.agentes)
+    if jogo.partidas is not None and soma_agentes > jogo.partidas:
+        erros.append(f"A soma das partidas por agente ({soma_agentes}) é maior que o total "
+                     f"de partidas do dia ({jogo.partidas}).")
+
     return erros

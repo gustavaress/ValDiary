@@ -150,16 +150,18 @@ def _habitos_do_dia(registro: RegistroDia, nomes: dict[str, str]) -> set[str]:
         return chave
 
     itens = set()
-    cafe = registro.rotina.alimentacao.cafe_da_manha
-    if cafe.descricao or cafe.horario:
-        itens.add(item("Refeição", "café da manhã"))
+    alimentacao = registro.rotina.alimentacao
+    for refeicao, nome in ((alimentacao.cafe_da_manha, "café da manhã"), (alimentacao.almoco, "almoço"),
+                           (alimentacao.jantar, "jantar")):
+        if refeicao.realizada:
+            itens.add(item("Refeição", nome))
     for bebida in registro.rotina.bebidas:
         if bebida.tipo:
             itens.add(item("Bebida", bebida.tipo))
     for remedio in registro.rotina.medicamentos:
         if remedio.nome:
             itens.add(item("Medicamento", remedio.nome))
-    for agente in registro.valorant.agentes:
+    for agente in registro.valorant.nomes_agentes:
         itens.add(item("Agente", agente))
     return itens
 

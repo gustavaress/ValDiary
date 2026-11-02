@@ -11,6 +11,7 @@ from pathlib import Path
 from app import config
 from app.models import RegistroDia
 from app.storage.escrita_segura import escrever_json_atomico, fazer_backup
+from app.storage.migracoes import migrar_documento
 from app.storage.semanas import (
     caminho_semana,
     periodo_semana,
@@ -69,6 +70,7 @@ class RepositorioDiario:
                     f"{caminho.name} usa o formato v{versao}, mas este app só entende "
                     f"até a v{config.VERSAO_SCHEMA}. Atualize o aplicativo."
                 )
+            dados = migrar_documento(dados)
             return [RegistroDia.from_dict(d) for d in dados.get("dias", [])]
         except VersaoIncompativelError:
             raise

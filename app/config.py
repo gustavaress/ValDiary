@@ -11,7 +11,7 @@ NOME_APP = "Diário de Performance Valorant"
 
 # Versão do formato dos arquivos JSON. Sempre que a estrutura mudar de forma
 # incompatível, incrementamos este número e escrevemos uma migração.
-VERSAO_SCHEMA = 1
+VERSAO_SCHEMA = 2
 
 # Escala usada em todas as notas subjetivas (sono, disposição, mira...).
 ESCALA_MIN = 1
@@ -24,8 +24,13 @@ ESCALA_MAX = 10
 # ao fechar o programa.
 if getattr(sys, "frozen", False):
     PASTA_BASE = Path(sys.executable).resolve().parent
+    # Recursos (imagens) vão empacotados dentro do .exe, que os extrai aqui.
+    PASTA_RECURSOS = Path(sys._MEIPASS) / "assets"
 else:
     PASTA_BASE = Path(__file__).resolve().parent.parent
+    PASTA_RECURSOS = PASTA_BASE / "assets"
+
+PASTA_AGENTES = PASTA_RECURSOS / "agentes"
 
 PASTA_DADOS = PASTA_BASE / "dados"
 PASTA_BACKUPS = PASTA_DADOS / "_backups"

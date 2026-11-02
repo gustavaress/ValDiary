@@ -69,6 +69,7 @@ class Sono:
 
 @dataclass
 class Refeicao:
+    realizada: bool | None = None  # True = teve a refeição; None = não marcada
     horario: str | None = None
     descricao: str | None = None
 
@@ -141,6 +142,12 @@ class Rotina:
 # --- Valorant -------------------------------------------------------------
 
 @dataclass
+class AgenteJogado:
+    nome: str
+    partidas: int | None = None
+
+
+@dataclass
 class AvaliacaoJogo:
     """Percepções subjetivas, escala 1-10."""
     mira: int | None = None
@@ -171,7 +178,7 @@ class Valorant:
     adr: float | None = None
     hs_pct: float | None = None
 
-    agentes: list[str] = field(default_factory=list)
+    agentes: list[AgenteJogado] = field(default_factory=list)
     avaliacao: AvaliacaoJogo = field(default_factory=AvaliacaoJogo)
     notas: str | None = None
 
@@ -196,6 +203,10 @@ class Valorant:
         return f"{self.abates}/{self.mortes}/{self.assistencias or 0}"
 
     @property
+    def nomes_agentes(self) -> list[str]:
+        return [a.nome for a in self.agentes]
+
+    @property
     def winrate_pct(self) -> float | None:
         if not self.partidas or self.vitorias is None:
             return None
@@ -217,9 +228,10 @@ class Valorant:
     def from_dict(cls, dados: dict | None) -> "Valorant":
         dados = dict(dados or {})
         avaliacao = _simples(AvaliacaoJogo, dados.pop("avaliacao", None))
+        agentes = dados.pop("agentes", None) or []
         objeto = _simples(cls, dados)
         objeto.avaliacao = avaliacao
-        objeto.agentes = list(objeto.agentes or [])
+        objeto.agentes = [_simples(AgenteJogado, a) for a in agentes]
         return objeto
 
 

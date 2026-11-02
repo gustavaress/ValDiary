@@ -1,4 +1,5 @@
 from app.models.registro import (
+    AgenteJogado,
     AvaliacaoJogo,
     Alimentacao,
     Bebida,
@@ -14,6 +15,7 @@ from app.models.registro import (
 from app.models.validacao import validar_registro
 
 __all__ = [
+    "AgenteJogado",
     "AvaliacaoJogo",
     "Alimentacao",
     "Bebida",

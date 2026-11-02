@@ -13,6 +13,7 @@ from pathlib import Path
 from app import config
 from app.models import RegistroDia, validar_registro
 from app.storage.escrita_segura import escrever_json_atomico
+from app.storage.migracoes import migrar_documento
 from app.storage.repositorio import RepositorioDiario
 
 FORMATO = "valdiary-exportacao"
@@ -26,7 +27,9 @@ LEGENDA = {
                      "excelente, bom, normal, ruim ou pessimo.",
     "valorant": "abates, mortes e assistencias são TOTAIS somados de todas as partidas do dia. "
                 "acs, adr e hs_pct são MÉDIAS por partida. 'derivados' (kd, kda, winrate) é "
-                "calculado automaticamente a partir desses valores.",
+                "calculado automaticamente a partir desses valores. 'agentes' lista cada agente "
+                "jogado no dia e em quantas partidas.",
+    "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",
     "semanas": "Semanas no padrão ISO 8601 (segunda a domingo).",
@@ -110,6 +113,8 @@ def ler_arquivo(caminho: Path) -> list[RegistroDia]:
                 f"O arquivo usa o formato v{versao}, mas este app só entende até a "
                 f"v{config.VERSAO_SCHEMA}. Atualize o aplicativo."
             )
+        if isinstance(documento, dict):
+            documento = migrar_documento(documento)
         for dia in (documento.get("dias") or []) if isinstance(documento, dict) else []:
             rotulo = dia.get("data", "sem data") if isinstance(dia, dict) else "?"
             try:

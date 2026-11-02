@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from app.models import (
+    AgenteJogado,
     Bebida,
     Classificacao,
     RegistroDia,
@@ -28,7 +29,7 @@ def _registro_completo() -> RegistroDia:
     r.valorant.acs = 245
     r.valorant.adr = 158.4
     r.valorant.hs_pct = 27.5
-    r.valorant.agentes = ["Jett", "Raze"]
+    r.valorant.agentes = [AgenteJogado("Jett", 3), AgenteJogado("Raze", 1)]
     r.valorant.avaliacao.mira = 9
     r.criado_em = datetime(2026, 11, 2, 23, 40, 2)
     return r

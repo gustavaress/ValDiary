@@ -55,16 +55,6 @@ def hora(valor: str | None, rotulo: str) -> str | None:
     raise ErroConversao(f"{rotulo}: horário inválido (use HH:MM, ex.: 07:30).")
 
 
-def lista_de_nomes(valor: str | None) -> list[str]:
-    """ "Jett, Raze; Omen" -> ["Jett", "Raze", "Omen"] (sem repetidos)."""
-    nomes = []
-    for parte in re.split(r"[,;]", valor or ""):
-        nome = parte.strip()
-        if nome and nome.lower() not in (n.lower() for n in nomes):
-            nomes.append(nome)
-    return nomes
-
-
 def para_campo(valor) -> str:
     """Valor -> texto para exibir num campo editável (None -> "", 2.5 -> "2,5")."""
     if valor is None:
