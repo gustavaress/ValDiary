@@ -49,15 +49,26 @@ def evolucao_ranking(registros: list[RegistroDia], definicoes: list[DefinicaoRan
     return resultado
 
 
-def ranking_atual(registros: list[RegistroDia], definicoes: list[DefinicaoRanking]) -> Ranking | None:
-    """Ranking depois de todos os dias registrados (None se nunca foi definido)."""
+def ranking_atual_com_data(registros: list[RegistroDia],
+                           definicoes: list[DefinicaoRanking]) -> tuple[Ranking, date | None] | None:
+    """(ranking depois de todos os dias registrados, último dia aplicado).
+
+    O dia é None quando a definição mais recente é mais nova que qualquer dia
+    registrado (o ranking é a própria definição). Retorna None se nunca foi definido.
+    """
     if not definicoes:
         return None
     ultima = max(definicoes, key=lambda d: d.data)
     evolucao = evolucao_ranking(registros, definicoes)
     if evolucao and evolucao[-1].data >= ultima.data:
-        return evolucao[-1].final
-    return ultima.ranking  # definição mais nova que qualquer dia registrado
+        return evolucao[-1].final, evolucao[-1].data
+    return ultima.ranking, None
+
+
+def ranking_atual(registros: list[RegistroDia], definicoes: list[DefinicaoRanking]) -> Ranking | None:
+    """Ranking depois de todos os dias registrados (None se nunca foi definido)."""
+    resultado = ranking_atual_com_data(registros, definicoes)
+    return resultado[0] if resultado else None
 
 
 def ranking_no_inicio_do_dia(data: date, registros: list[RegistroDia],

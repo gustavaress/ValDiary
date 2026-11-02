@@ -222,4 +222,5 @@ class TelaHistorico(TelaBase):
         ):
             return
         self.repositorio.excluir_dia(registro.data)
+        self.janela.atualizar_ranking_salvo()
         self.ao_exibir()

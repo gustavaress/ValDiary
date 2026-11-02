@@ -78,3 +78,28 @@ def test_arquivo_de_ranking_corrompido(tmp_path):
     repo.arquivo.write_text("{ quebrado", encoding="utf-8")
     with pytest.raises(ArquivoCorrompidoError):
         repo.carregar()
+
+
+def test_ranking_atual_com_data_do_ultimo_dia():
+    from app.analysis.ranking import ranking_atual_com_data
+    registros = [_dia(1, -20, +17)]
+    definicao = DefinicaoRanking(date(2026, 11, 1), "Ascendente 3", 1)
+    assert ranking_atual_com_data(registros, [definicao]) == (Ranking("Ascendente 3", 17), date(2026, 11, 1))
+    ajuste_futuro = DefinicaoRanking(date(2026, 11, 5), "Imortal 1", 10)
+    assert ranking_atual_com_data(registros, [definicao, ajuste_futuro]) == (Ranking("Imortal 1", 10), None)
+
+
+def test_ranking_salvo_e_preservado_ao_mexer_nas_definicoes(tmp_path):
+    from app.storage.repositorio_ranking import RankingSalvo
+    repo = RepositorioRanking(tmp_path / "dados", tmp_path / "dados" / "_backups")
+    repo.definir(date(2026, 11, 1), "Ascendente 3", 1)
+    assert repo.carregar_atual() is None
+
+    salvo = RankingSalvo(Ranking("Ascendente 3", 17), date(2026, 11, 1))
+    assert repo.salvar_atual(salvo) is True
+    assert repo.salvar_atual(salvo) is False        # sem mudança: não regrava
+    assert repo.carregar_atual() == salvo
+
+    repo.definir(date(2026, 11, 9), "Imortal 1", 30)  # ajuste não apaga o ranking salvo
+    assert repo.carregar_atual() == salvo
+    assert [d.data.day for d in repo.carregar()] == [1, 9]

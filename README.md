@@ -68,7 +68,7 @@ dados/
 │   └── semana_45.json
 ├── _backups/               ← versões anteriores de cada semana (últimas 10)
 ├── _exportacoes/
-├── ranking.json            ← definições de elo/RR feitas na aba Ranking
+├── ranking.json            ← seu ranking atual + ajustes manuais da aba Ranking
 └── _rascunho.json          ← formulário não salvo (temporário)
 ```
 
@@ -174,7 +174,8 @@ python scripts/gerar_agentes.py
 
 ## Ranking
 
-- Na aba **Ranking**, defina seu **elo e RR** e a data a partir da qual valem. Normalmente isso é feito uma vez; refaça só se o cálculo ficar diferente do jogo. As definições ficam em `dados/ranking.json`.
+- Na aba **Ranking**, ajuste seu **elo e RR** e a data a partir da qual valem. Normalmente isso é feito uma vez; refaça só se o cálculo ficar diferente do jogo.
+- **Sempre que um dia é salvo** (ou editado, excluído, importado), o app recalcula e grava o seu ranking ao fim do último dia registrado em `dados/ranking.json` (campo `atual`), junto com os ajustes manuais (campo `definicoes`). A aba Ranking e a tela inicial mostram esse valor.
 - No **registro diário**, informe apenas o **RR ganho ou perdido em cada partida** (ex.: `-20`, `+17`). O app calcula o ranking partida a partida, na ordem:
   - chegar a 100 RR promove (o excedente vai para o elo seguinte);
   - **proteção contra rebaixamento**: perder com RR acima de 0 zera os pontos, sem cair de elo;

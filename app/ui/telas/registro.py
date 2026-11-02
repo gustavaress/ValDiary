@@ -131,9 +131,10 @@ class TelaRegistro(TelaBase):
                                          text_color=tema.COR_TEXTO_SECUNDARIO)
         self._rotulo_modo.pack(anchor="w")
 
-        self._rotulo_status = ctk.CTkLabel(barra, text="", font=tema.fonte_pequena(),
+        # Linha própria abaixo dos controles (só aparece quando há algo a dizer):
+        # na mesma linha dos botões não sobra espaço para mensagens mais longas.
+        self._rotulo_status = ctk.CTkLabel(barra, text="", font=tema.fonte_pequena(), anchor="w",
                                            text_color=tema.COR_TEXTO_SECUNDARIO)
-        self._rotulo_status.grid(row=0, column=5, sticky="e", padx=12)
         ctk.CTkButton(barra, text="+ Novo registro", width=130, height=38, font=tema.fonte_normal(),
                       fg_color="transparent", border_width=1, border_color=tema.COR_BORDA,
                       text_color=tema.COR_TEXTO, hover_color=tema.COR_CARTAO_HOVER,
@@ -400,11 +401,15 @@ class TelaRegistro(TelaBase):
             self._rotulo_modo.configure(text="Novo registro  ·  trocar a data mantém o conteúdo",
                                         text_color=tema.COR_TEXTO_SECUNDARIO)
         else:
-            self._rotulo_modo.configure(text="Editando registro existente  ·  data travada",
+            self._rotulo_modo.configure(text="Editando  ·  data travada",
                                         text_color=tema.COR_AVISO)
 
     def _status(self, texto: str, cor: str = tema.COR_TEXTO_SECUNDARIO) -> None:
         self._rotulo_status.configure(text=texto, text_color=cor)
+        if texto:
+            self._rotulo_status.grid(row=1, column=0, columnspan=8, sticky="w", padx=16, pady=(0, 10))
+        else:
+            self._rotulo_status.grid_remove()
 
     # --- Abrir registros --------------------------------------------------
 
@@ -575,7 +580,11 @@ class TelaRegistro(TelaBase):
         self._base = _sem_data(self._ler())
         self._descartar_rascunho()
         self._atualizar_cabecalho()
-        self._status(f"✓ Salvo às {datetime.now():%H:%M}", tema.COR_SUCESSO)
+        status = f"✓ Salvo às {datetime.now():%H:%M}"
+        salvo = self.janela.atualizar_ranking_salvo()
+        if salvo is not None:
+            status += f"  ·  Ranking atualizado: {salvo.ranking.texto}"
+        self._status(status, tema.COR_SUCESSO)
 
     # --- Rascunho automático ----------------------------------------------
 

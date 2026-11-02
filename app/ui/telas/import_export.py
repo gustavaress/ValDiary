@@ -219,6 +219,7 @@ class TelaImportExport(TelaBase):
         except (ArquivoCorrompidoError, VersaoIncompativelError) as erro:
             messagebox.showerror("Importação interrompida", f"{erro}\n\nNada foi gravado.", parent=self)
             return
+        self.janela.atualizar_ranking_salvo()
         messagebox.showinfo("Importação concluída", f"{gravados} dias gravados.", parent=self)
         self._atualizar_lista()
 

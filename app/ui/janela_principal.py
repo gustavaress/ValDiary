@@ -8,10 +8,11 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app import config
-from app.storage import RepositorioDiario
+from app.analysis.ranking import ranking_atual_com_data
+from app.storage import ArquivoCorrompidoError, RepositorioDiario
 from app.storage.rascunho import apagar_rascunho, carregar_rascunho
 from app.storage.reorganizacao import reorganizar_se_preciso
-from app.storage.repositorio_ranking import RepositorioRanking
+from app.storage.repositorio_ranking import RankingSalvo, RepositorioRanking
 from app.ui import tema
 from app.ui.formatacao import data_curta
 from app.ui.telas import (
@@ -47,6 +48,7 @@ class JanelaPrincipal(ctk.CTk):
         # Antes de qualquer tela ler os dados: ajusta arquivos do formato antigo
         # de semanas (segunda a domingo) para o atual (domingo a sábado).
         self._reorganizacao = reorganizar_se_preciso(repositorio)
+        self.atualizar_ranking_salvo()
 
         self.title(config.NOME_APP)
         self.geometry("1200x760")
@@ -124,6 +126,21 @@ class JanelaPrincipal(ctk.CTk):
                 fg_color=tema.COR_CARTAO if ativo else "transparent",
                 text_color=tema.COR_DESTAQUE if ativo else tema.COR_TEXTO_SECUNDARIO,
             )
+
+    def atualizar_ranking_salvo(self) -> RankingSalvo | None:
+        """Recalcula o ranking ao fim do último dia registrado e grava em ranking.json.
+
+        Chamado sempre que algo que afeta o ranking muda: dia salvo, editado,
+        excluído ou importado, ou ajuste manual na aba Ranking.
+        """
+        try:
+            registros, _ = self.repositorio.carregar_todos()
+            resultado = ranking_atual_com_data(registros, self.repositorio_ranking.carregar())
+            salvo = RankingSalvo(*resultado) if resultado else None
+            self.repositorio_ranking.salvar_atual(salvo)
+        except (ArquivoCorrompidoError, OSError):
+            return None  # o arquivo com problema é avisado ao abrir a aba Ranking
+        return salvo
 
     def abrir_registro(self, data: date) -> None:
         """Abre a tela de registro já na data indicada."""

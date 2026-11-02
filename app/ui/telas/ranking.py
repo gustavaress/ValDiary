@@ -5,7 +5,7 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
-from app.analysis.ranking import evolucao_ranking, ranking_atual
+from app.analysis.ranking import evolucao_ranking
 from app.models.ranking import ELOS, erros_definicao
 from app.storage import ArquivoCorrompidoError
 from app.ui import conversao, tema
@@ -16,21 +16,21 @@ from app.ui.telas.base import TelaBase
 
 class TelaRanking(TelaBase):
     titulo = "Ranking"
-    subtitulo = "Defina seu elo uma vez; o app atualiza com o RR de cada partida registrada."
+    subtitulo = "Seu ranking é atualizado sozinho a cada dia registrado, com o RR de cada partida."
 
     def montar(self) -> None:
         area = ctk.CTkScrollableFrame(self.corpo, fg_color="transparent")
         area.pack(fill="both", expand=True)
         area.grid_columnconfigure((0, 1, 2), weight=1, uniform="col")
 
-        self._cartao_atual = CartaoInfo(area, "Ranking atual (calculado)")
+        self._cartao_atual = CartaoInfo(area, "Seu ranking")
         self._cartao_semana = CartaoInfo(area, "RR nos últimos 7 dias")
-        self._cartao_definicao = CartaoInfo(area, "Última definição")
+        self._cartao_definicao = CartaoInfo(area, "Último ajuste manual")
         for coluna, cartao in enumerate((self._cartao_atual, self._cartao_semana, self._cartao_definicao)):
             cartao.grid(row=0, column=coluna, sticky="nsew", padx=6, pady=6)
 
-        secao = Secao(area, "Definir ranking",
-                      "Use ao começar a usar o app, ou quando o ranking calculado ficar diferente do jogo. "
+        secao = Secao(area, "Ajustar ranking manualmente",
+                      "Só é preciso ao começar a usar o app ou se o ranking ficar diferente do jogo. "
                       "Vale a partir do INÍCIO do dia escolhido.")
         secao.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=6, pady=6)
         linha = ctk.CTkFrame(secao.conteudo, fg_color="transparent")
@@ -46,7 +46,7 @@ class TelaRanking(TelaBase):
 
         secao = Secao(area, "Evolução dia a dia",
                       "RR de cada partida aplicado na ordem, com proteção contra rebaixamento. "
-                      "★ = uma definição passou a valer.")
+                      "★ = um ajuste manual passou a valer.")
         secao.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=6, pady=6)
         self._tabela_evolucao = Tabela(secao.conteudo, [
             ("data", "Data", 130, "w"), ("inicio", "Início do dia", 200, "w"),
@@ -54,7 +54,7 @@ class TelaRanking(TelaBase):
         ], altura_automatica=True)
         self._tabela_evolucao.pack(fill="x")
 
-        secao = Secao(area, "Definições feitas")
+        secao = Secao(area, "Ajustes manuais feitos")
         secao.grid(row=3, column=0, columnspan=3, sticky="nsew", padx=6, pady=6)
         self._tabela_definicoes = Tabela(secao.conteudo, [
             ("data", "Vale a partir de", 150, "w"), ("ranking", "Ranking", 200, "w"),
@@ -80,12 +80,15 @@ class TelaRanking(TelaBase):
         registros, _ = self.repositorio.carregar_todos()
         evolucao = evolucao_ranking(registros, definicoes)
 
-        atual = ranking_atual(registros, definicoes)
-        if atual is None:
-            self._cartao_atual.atualizar("—", "defina seu ranking abaixo")
+        salvo = self.janela.atualizar_ranking_salvo()
+        if salvo is None:
+            self._cartao_atual.atualizar("—", "ajuste seu ranking abaixo para começar")
         else:
-            self._cartao_atual.atualizar(atual.elo, f"{atual.rr} RR")
-            self._elo.set(atual.elo)  # sugestão para uma eventual redefinição
+            atual = salvo.ranking
+            origem = (f"fim do dia {data_curta(salvo.apos_o_dia)}" if salvo.apos_o_dia
+                      else "ajuste manual")
+            self._cartao_atual.atualizar(atual.elo, f"{atual.rr} RR  ·  {origem}")
+            self._elo.set(atual.elo)  # sugestão para um eventual ajuste
             self._rr.set(str(atual.rr))
 
         limite = date.today().toordinal() - 6
@@ -97,7 +100,7 @@ class TelaRanking(TelaBase):
             ultima = definicoes[-1]
             self._cartao_definicao.atualizar(ultima.ranking.elo, f"{ultima.rr} RR em {data_curta(ultima.data)}")
         else:
-            self._cartao_definicao.atualizar("—", "nenhuma ainda")
+            self._cartao_definicao.atualizar("—", "nenhum ainda")
 
         self._tabela_evolucao.preencher([
             (("★ " if e.redefinido else "") + data_tabela(e.data), e.inicio.texto,
@@ -134,10 +137,10 @@ class TelaRanking(TelaBase):
     def _remover(self) -> None:
         selecao = self._tabela_definicoes.arvore.selection()
         if not selecao:
-            messagebox.showinfo("Remover", "Selecione uma definição na tabela.", parent=self)
+            messagebox.showinfo("Remover", "Selecione um ajuste na tabela.", parent=self)
             return
         data = date.fromisoformat(selecao[0])
-        if messagebox.askyesno("Remover definição",
-                               f"Remover a definição que vale a partir de {data_curta(data)}?", parent=self):
+        if messagebox.askyesno("Remover ajuste",
+                               f"Remover o ajuste que vale a partir de {data_curta(data)}?", parent=self):
             self._repositorio_ranking.remover(data)
             self.ao_exibir()
