@@ -194,6 +194,15 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     # Registrou partidas mas não marcou "jogou": é óbvio que jogou.
     if jogo.jogou is None and jogo.partidas:
         jogo.jogou = True
+    # Marcou que NÃO jogou: o que ficou nos campos de jogo (desabilitados na tela) é
+    # descartado. A aim routine é treino, não partida, e continua valendo.
+    if jogo.jogou is False:
+        jogo.horario_inicio = jogo.horario_fim = None
+        jogo.partidas = []
+        jogo.aquecimento = jogo.aquecimento_descricao = None
+        for nota in _NOTAS_AVALIACAO:
+            setattr(jogo.avaliacao, nota, None)
+        jogo.notas = None
 
     if ler.erros:
         return None, ler.erros

@@ -181,6 +181,25 @@ class TelaRegistro(TelaBase):
             self.campos["aim_exercicios"].set(itens_da_rotina_padrao(self))
         for aba in self._abas_montadas:
             aba.atualizar()
+        self.atualizar_estado_jogo()
+
+    def atualizar_estado_jogo(self) -> None:
+        """Com "Jogou hoje? Não", desabilita tudo que é sobre partidas.
+
+        Fica ativo o que não depende de ter jogado: rotina, aim routine (é treino)
+        e as observações gerais. Os valores continuam na tela (voltar para "Sim"
+        os recupera), mas são descartados ao salvar com "Não".
+        """
+        jogou = self.campos["jogou"].get() != "nao"
+        for chave in ("jogo_inicio", "jogo_fim", "mira", "movimentacao", "tomada_decisao",
+                      "concentracao", "consistencia", "notas_jogo"):
+            self.campos[chave].habilitar(jogou)
+        self.abas._segmented_button._buttons_dict["Partidas"].configure(state="normal" if jogou else "disabled")
+        if not jogou and self.abas.get() == "Partidas":
+            self.abas.set("Valorant")
+        self.aba_valorant.rotulo_nao_jogou.configure(text="" if jogou else (
+            "Você marcou que não jogou: horários, autoavaliação, aba Partidas e situações nas partidas "
+            "ficam desativados e não são salvos. A Aim Routine continua disponível."))
 
     def tem_alteracoes(self) -> bool:
         return self._carregado and _sem_data(self.ler()) != self._base

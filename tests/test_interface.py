@@ -127,3 +127,17 @@ def test_descricao_do_aquecimento_so_habilita_com_sim(janela):
     assert descricao.cget("state") == "disabled"
     tela.campos["aquecimento"]._clicar("sim")
     assert descricao.cget("state") == "normal"
+
+
+def test_nao_jogou_desabilita_campos_de_jogo_e_mantem_aim(janela):
+    tela = _registro(janela)
+    tela.abas.set("Partidas")
+    tela.campos["jogou"]._clicar("nao")
+    assert tela.campos["jogo_inicio"].seletor._hora.cget("state") == "disabled"
+    assert tela.campos["notas_jogo"].caixa.cget("state") == "disabled"
+    assert tela.abas._segmented_button._buttons_dict["Partidas"].cget("state") == "disabled"
+    assert tela.abas.get() == "Valorant"  # saiu da aba desativada
+    assert tela.abas._segmented_button._buttons_dict["Aim Routine"].cget("state") == "normal"
+
+    tela.campos["jogou"]._clicar("sim")
+    assert tela.campos["jogo_inicio"].seletor._hora.cget("state") == "normal"

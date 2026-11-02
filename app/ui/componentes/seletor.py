@@ -52,6 +52,10 @@ class SeletorBotoes(ctk.CTkFrame):
         self._valor = valor if valor in self._botoes else None
         self._pintar()
 
+    def habilitar(self, ativo: bool) -> None:
+        for botao in self._botoes.values():
+            botao.configure(state="normal" if ativo else "disabled")
+
 
 class SeletorNota(SeletorBotoes):
     """Notas de 1 a 10."""

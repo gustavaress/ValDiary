@@ -156,6 +156,9 @@ class CampoNota(ctk.CTkFrame):
     def set(self, valor: int | None) -> None:
         self.seletor.set(valor)
 
+    def habilitar(self, ativo: bool) -> None:
+        self.seletor.habilitar(ativo)
+
 
 class CampoTextoLongo(ctk.CTkFrame):
     def __init__(self, master, rotulo: str, altura: int = 140):

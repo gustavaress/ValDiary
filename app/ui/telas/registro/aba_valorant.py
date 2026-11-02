@@ -16,7 +16,8 @@ class AbaValorant:
         rotulo = ctk.CTkFrame(secao.conteudo, fg_color="transparent")
         ctk.CTkLabel(rotulo, text="Jogou hoje?", font=tema.fonte_pequena(),
                      text_color=tema.COR_TEXTO_SECUNDARIO).pack(anchor="w")
-        jogou = SeletorBotoes(rotulo, [("sim", "Sim"), ("nao", "Não")], largura_botao=60)
+        jogou = SeletorBotoes(rotulo, [("sim", "Sim"), ("nao", "Não")], largura_botao=60,
+                              ao_mudar=lambda _: tela.atualizar_estado_jogo())
         jogou.pack(anchor="w")
         rotulo.grid(row=0, column=0, sticky="w", padx=(0, 18), pady=4)
         self._campos["jogou"] = jogou
@@ -30,6 +31,9 @@ class AbaValorant:
         self.rotulo_medicacao = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
                                              font=tema.fonte_pequena(), text_color=tema.COR_TEXTO_SECUNDARIO)
         self.rotulo_medicacao.grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 0))
+        self.rotulo_nao_jogou = ctk.CTkLabel(
+            secao.conteudo, text="", justify="left", anchor="w", font=tema.fonte_pequena(), text_color=tema.COR_AVISO)
+        self.rotulo_nao_jogou.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         secao = Secao(area, "Autoavaliação")
         secao.pack(fill="x", pady=10)

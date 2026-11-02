@@ -96,3 +96,15 @@ def test_insights_encontram_diferencas_relevantes():
     assert any(f.startswith("Horas de sono: em média 8,2h nos dias bons") for f in frases)
     assert any("aim routine em 100% dos dias bons e em 0% dos dias ruins" in f for f in frases)
     assert len(frases) <= 4
+
+
+def test_nao_jogou_descarta_os_dados_de_jogo_mas_mantem_a_aim_routine():
+    formulario = registro_para_formulario(RegistroDia(data=HOJE))
+    formulario.update(jogou="nao", jogo_inicio="20:00", mira=8, notas_jogo="sobrou", aquecimento="sim",
+                      partidas=[{"agente": "Jett", "resultado": "vitoria", "abates": "20", "rr": "+18"}],
+                      aim_exercicios=[{"nome": "Tracking", "meta": "5 min", "feito": True}])
+    registro, erros = formulario_para_registro(formulario)
+    jogo = registro.valorant
+    assert erros == [] and jogo.jogou is False
+    assert (jogo.horario_inicio, jogo.partidas, jogo.avaliacao.mira, jogo.notas, jogo.aquecimento) == (None, [], None, None, None)
+    assert jogo.aim_routine.feita is True
