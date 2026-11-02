@@ -37,7 +37,7 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | 📤 | Exportar / importar semanas em JSON, com legenda e prompt pronto para o ChatGPT | ✅ |
 | 📈 | Dashboard com evolução no tempo, média móvel e média por tipo de dia | ✅ |
 | ⚖️ | Comparação entre dias bons e ruins, correlações e hábitos frequentes | ✅ |
-| 📦 | Executável `.exe` para Windows | 🔜 |
+| 📦 | Executável `.exe` para Windows | ✅ |
 
 ---
 
@@ -64,6 +64,20 @@ python -m pytest -m "not interface"  # só os rápidos
 ```
 
 ---
+
+## Executável (.exe)
+
+```powershell
+pip install -r requirements-dev.txt
+python scripts/gerar_exe.py
+```
+
+Gera a pasta `dist\ValDiary\` com o `ValDiary.exe` e uma subpasta `_internal\` (bibliotecas, fontes, ícone e imagens dos agentes). **A pasta inteira é o programa**: copie-a para onde quiser (ex.: `Documentos\ValDiary`) e crie um atalho do `ValDiary.exe` na área de trabalho.
+
+- O formato em pasta abre em ~1–2 s; um `.exe` único teria de descompactar pandas e Matplotlib a cada abertura.
+- Os dados ficam em `dados\`, **ao lado do `ValDiary.exe`**. Para levar seus registros para o executável, copie a pasta `dados\` do projeto para dentro da pasta do programa.
+- Evite instalar em `C:\Arquivos de Programas`, onde o Windows bloqueia a gravação.
+- Na primeira abertura, o Windows Defender pode demorar alguns segundos verificando os arquivos.
 
 ## Onde ficam os dados
 
