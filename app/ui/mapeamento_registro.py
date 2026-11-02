@@ -22,7 +22,6 @@ from app.models import (
     calcular_horas_sono,
     resumir_partidas,
 )
-from app.models.ranking import Ranking
 from app.ui import conversao
 from app.ui.conversao import ErroConversao, para_campo
 
@@ -68,8 +67,6 @@ def registro_para_formulario(registro: RegistroDia) -> dict:
         "jogou": {True: "sim", False: "nao"}.get(jogo.jogou),
         "jogo_inicio": jogo.horario_inicio or "",
         "jogo_fim": jogo.horario_fim or "",
-        "ranking_elo": jogo.ranking_inicio.elo,
-        "ranking_rr": para_campo(jogo.ranking_inicio.rr),
         "partidas": [
             {"agente": p.agente or "", "resultado": p.resultado, "abates": para_campo(p.abates),
              "mortes": para_campo(p.mortes), "assistencias": para_campo(p.assistencias),
@@ -179,8 +176,6 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     jogo.jogou = {"sim": True, "nao": False}.get(formulario.get("jogou"))
     jogo.horario_inicio = ler.hora("jogo_inicio", "Início do jogo")
     jogo.horario_fim = ler.hora("jogo_fim", "Fim do jogo")
-    jogo.ranking_inicio = Ranking(elo=formulario.get("ranking_elo") or None,
-                                  rr=ler.inteiro("ranking_rr", "Ranking no início do dia (RR)"))
     jogo.partidas = _ler_partidas(formulario.get("partidas") or [], ler)
     jogo.legado = formulario.get("legado")
     for nota in _NOTAS_AVALIACAO:

@@ -1,16 +1,20 @@
-"""Ranking competitivo: elos e cálculo (estimado) do ranking após as partidas.
+"""Ranking competitivo: elos, definições do jogador e cálculo partida a partida.
 
-Regra usada: cada divisão (Ferro 1 ... Ascendente 3) vai de 0 a 100 RR. Passar
-de 100 promove (o excedente vai para a divisão seguinte); ficar abaixo de 0
-rebaixa (100 + o valor negativo). No Imortal e no Radiante o RR acumula sem
-teto, porque a divisão depende do ranking global do jogo.
+Regras (aplicadas a cada partida, na ordem em que foram jogadas):
+- Cada divisão (Ferro 1 ... Ascendente 3) vai de 0 a 100 RR. Chegar a 100
+  promove; o excedente vai para a divisão seguinte.
+- Proteção contra rebaixamento: perder com RR acima de 0 nunca rebaixa. Se a
+  perda for maior que o RR atual, os pontos zeram e o elo continua o mesmo.
+- Perder já estando com 0 RR rebaixa para o elo anterior, com 100 menos a perda.
+- Ferro 1 é o piso (o RR não fica negativo).
+- No Imortal e no Radiante não há promoção pelo app: a divisão depende do
+  ranking global do jogo, então o RR só acumula.
 
-É uma ESTIMATIVA: o jogo tem regras próprias (ex.: proteção contra
-rebaixamento) que não dá para reproduzir. Se o valor real for diferente,
-basta corrigir o ranking inicial do dia seguinte.
+É uma ESTIMATIVA. Se ficar diferente do jogo, redefina o ranking na aba Ranking.
 """
 
 from dataclasses import dataclass
+from datetime import date, datetime
 
 _TIERS_COM_DIVISAO = ("Ferro", "Bronze", "Prata", "Ouro", "Platina", "Diamante", "Ascendente")
 DIVISOES = [f"{tier} {numero}" for tier in _TIERS_COM_DIVISAO for numero in (1, 2, 3)]
@@ -20,50 +24,72 @@ ELOS = DIVISOES + TOPO
 RR_POR_DIVISAO = 100
 
 
-@dataclass
+@dataclass(frozen=True)
 class Ranking:
-    elo: str | None = None
-    rr: int | None = None
+    elo: str
+    rr: int
 
     @property
-    def completo(self) -> bool:
-        return self.elo in ELOS and self.rr is not None
-
-    @property
-    def texto(self) -> str | None:
-        if not self.completo:
-            return None
+    def texto(self) -> str:
         return f"{self.elo} · {self.rr} RR"
 
 
-def aplicar_rr(inicio: Ranking, variacao: int) -> Ranking:
-    """Ranking depois de ganhar/perder `variacao` RR a partir de `inicio` (que deve estar completo)."""
-    indice = ELOS.index(inicio.elo)
-    rr = inicio.rr + variacao
-    ultima_divisao = len(DIVISOES) - 1
-    while True:
-        no_topo = indice > ultima_divisao
-        if rr >= RR_POR_DIVISAO and not no_topo:
-            indice += 1          # promoção (Ascendente 3 -> Imortal 1 inclusive)
-            rr -= RR_POR_DIVISAO
-        elif rr < 0 and indice > 0:
-            # Rebaixamento. Do topo, sempre volta para Ascendente 3.
-            indice = min(indice, ultima_divisao + 1) - 1
-            rr += RR_POR_DIVISAO
-        elif rr < 0:
-            rr = 0               # Ferro 1 é o piso
-        else:
-            break
-    return Ranking(ELOS[indice], rr)
+@dataclass(frozen=True)
+class DefinicaoRanking:
+    """Ranking informado pelo jogador, valendo a partir do INÍCIO de `data`."""
+    data: date
+    elo: str
+    rr: int
+    definido_em: datetime | None = None
+
+    @property
+    def ranking(self) -> Ranking:
+        return Ranking(self.elo, self.rr)
+
+    def to_dict(self) -> dict:
+        return {"data": self.data.isoformat(), "elo": self.elo, "rr": self.rr,
+                "definido_em": self.definido_em.isoformat(timespec="seconds") if self.definido_em else None}
+
+    @classmethod
+    def from_dict(cls, dados: dict) -> "DefinicaoRanking":
+        definido_em = dados.get("definido_em")
+        return cls(date.fromisoformat(dados["data"]), dados["elo"], int(dados["rr"]),
+                   datetime.fromisoformat(definido_em) if definido_em else None)
 
 
-def erros_ranking(ranking: Ranking, rotulo: str) -> list[str]:
+def aplicar_partida(atual: Ranking, variacao: int) -> Ranking:
+    """Ranking depois de uma partida que rendeu `variacao` RR (positivo ou negativo)."""
+    indice = ELOS.index(atual.elo)
+    rr = atual.rr + variacao
+
+    if rr < 0:
+        if atual.rr > 0 or indice == 0:
+            return Ranking(atual.elo, 0)          # proteção contra rebaixamento / piso do Ferro 1
+        # Já estava com 0 RR: rebaixa. Do Imortal/Radiante, volta para Ascendente 3.
+        anterior = min(indice, len(DIVISOES)) - 1
+        return Ranking(ELOS[anterior], max(RR_POR_DIVISAO + variacao, 0))
+
+    no_topo = indice >= len(DIVISOES)
+    if rr >= RR_POR_DIVISAO and not no_topo:
+        return Ranking(ELOS[indice + 1], rr - RR_POR_DIVISAO)  # promoção
+    return Ranking(atual.elo, rr)
+
+
+def aplicar_partidas(inicio: Ranking, variacoes: list[int]) -> Ranking:
+    atual = inicio
+    for variacao in variacoes:
+        atual = aplicar_partida(atual, variacao)
+    return atual
+
+
+def erros_definicao(elo: str | None, rr: int | None) -> list[str]:
     erros = []
-    if ranking.elo is not None and ranking.elo not in ELOS:
-        erros.append(f"{rotulo}: elo desconhecido ({ranking.elo}).")
-    if ranking.rr is not None:
-        no_topo = ranking.elo in TOPO
-        if ranking.rr < 0 or (not no_topo and ranking.rr > RR_POR_DIVISAO):
-            limite = "maior ou igual a 0" if no_topo else f"entre 0 e {RR_POR_DIVISAO}"
-            erros.append(f"{rotulo}: o RR deve estar {limite}.")
+    if elo not in ELOS:
+        erros.append("Escolha o elo.")
+    if rr is None:
+        erros.append("Informe o RR.")
+    elif elo in TOPO and rr < 0:
+        erros.append("O RR deve ser maior ou igual a 0.")
+    elif elo not in TOPO and not (0 <= rr < RR_POR_DIVISAO):
+        erros.append(f"O RR deve estar entre 0 e {RR_POR_DIVISAO - 1}.")
     return erros

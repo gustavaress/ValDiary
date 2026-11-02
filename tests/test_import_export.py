@@ -117,3 +117,16 @@ def test_versao_futura_e_recusada(tmp_path):
     arquivo.write_text(json.dumps({"versao_schema": 99, "dias": []}), encoding="utf-8")
     with pytest.raises(ErroImportacao, match="v99"):
         ler_arquivo(arquivo)
+
+
+def test_pacote_inclui_ranking_dos_dias_exportados(origem, tmp_path):
+    from app.models.ranking import DefinicaoRanking
+    definicoes = [DefinicaoRanking(date(2026, 11, 2), "Ouro 2", 50)]
+    dia = origem.obter_dia(date(2026, 11, 3))
+    dia.valorant.partidas = [Partida(rr=+20), Partida(rr=-10)]
+    origem.salvar_dia(dia, sobrescrever=True)
+
+    pacote = json.loads(exportar(origem, [(2026, 45)], tmp_path / "p.json", definicoes).read_text(encoding="utf-8"))
+    evolucao = {e["data"]: e for e in pacote["ranking"]["evolucao_por_dia"]}
+    assert set(evolucao) == {"2026-11-02", "2026-11-03"}   # o dia 10 (semana 46) não foi exportado
+    assert evolucao["2026-11-03"]["fim"] == {"elo": "Ouro 2", "rr": 60}

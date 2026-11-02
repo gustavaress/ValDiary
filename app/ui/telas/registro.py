@@ -12,10 +12,10 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
-from app.analysis.resumo import ranking_mais_recente
+from app.analysis.ranking import ranking_no_inicio_do_dia
 from app.models import RegistroDia, calcular_horas_sono, validar_registro
 from app.models.datas import data_livre_mais_recente, erro_data_nova, proxima_data_livre
-from app.models.ranking import ELOS, Ranking, aplicar_rr
+from app.models.ranking import Ranking, aplicar_partidas
 from app.storage import ArquivoCorrompidoError, RegistroDuplicadoError, VersaoIncompativelError
 from app.storage.rascunho import apagar_rascunho, salvar_rascunho
 from app.ui import conversao, tema
@@ -24,7 +24,6 @@ from app.ui.componentes import (
     CampoHorario,
     CampoMarcacao,
     CampoNota,
-    CampoOpcao,
     CampoTextoLongo,
     ListaEditavel,
     ListaPartidas,
@@ -61,6 +60,7 @@ class TelaRegistro(TelaBase):
         self._data = date.today()
         self._modo = NOVO
         self._legado: dict | None = None  # totais antigos do dia (sem campo na tela)
+        self._ranking_inicio: Ranking | None = None  # calculado; vem da aba Ranking
         self._registradas: set[date] = set()
         self._carregado = False
         self._base: dict = {}             # conteúdo quando foi carregado/salvo
@@ -242,19 +242,12 @@ class TelaRegistro(TelaBase):
         ], colunas=1)
 
     def _montar_aba_partidas(self, area) -> None:
-        secao = Secao(area, "Ranking no início do dia",
-                      "Preenchido com o ranking final do último dia registrado. Corrija se estiver diferente.")
+        secao = Secao(area, "Resumo do dia", "Calculado automaticamente a partir das partidas abaixo. "
+                                             "O ranking vem da aba Ranking + o RR de cada partida, na ordem.")
         secao.pack(fill="x", pady=(0, 10))
-        elo = CampoOpcao(secao.conteudo, "Elo", ELOS, ao_mudar=self._atualizar_resumo)
-        rr = CampoEntrada(secao.conteudo, "RR (pontos)", largura=90, placeholder="0 a 100")
-        rr.ao_digitar(self._atualizar_resumo)
-        self._grade(secao, [("ranking_elo", elo), ("ranking_rr", rr)])
-        self._rotulo_ranking_origem = ctk.CTkLabel(secao.conteudo, text="", font=tema.fonte_pequena(),
-                                                   text_color=tema.COR_TEXTO_SECUNDARIO)
-        self._rotulo_ranking_origem.grid(row=0, column=2, sticky="sw", pady=(0, 10))
-
-        secao = Secao(area, "Resumo do dia", "Calculado automaticamente a partir das partidas abaixo.")
-        secao.pack(fill="x", pady=10)
+        self._rotulo_ranking = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
+                                            font=tema.fonte_pequena(), text_color=tema.COR_TEXTO_SECUNDARIO)
+        self._rotulo_ranking.pack(anchor="w", pady=(0, 6))
         self._rotulo_resumo = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
                                            font=tema.fonte_normal(), text_color=tema.COR_TEXTO)
         self._rotulo_resumo.pack(anchor="w")
@@ -357,21 +350,41 @@ class TelaRegistro(TelaBase):
         else:
             self._rotulo_legado.configure(text="")
 
-    @staticmethod
-    def _texto_ranking(formulario: dict, rr_do_dia: int | None) -> str:
-        """ "Ranking: Ouro 2 · 85 RR  →  Ouro 3 · 23 RR  ·  +38 RR no dia (final estimado)" """
+    def _texto_ranking(self, formulario: dict, rr_do_dia: int | None) -> str:
+        """Duas linhas:
+        "RR das partidas: -20, +17 (soma -3)"
+        "Ranking: Ascendente 3 · 1 RR  →  Ascendente 3 · 17 RR"
+        A soma pode diferir da mudança no ranking por causa da proteção contra rebaixamento.
+        """
+        variacoes = []
+        for partida in formulario.get("partidas") or []:
+            try:
+                rr = conversao.inteiro(partida.get("rr"), "")
+            except conversao.ErroConversao:
+                rr = None
+            if rr is not None:
+                variacoes.append(rr)
+        linhas = []
+        if variacoes:
+            linhas.append(f"RR das partidas: {', '.join(f'{v:+d}' for v in variacoes)}  (soma {rr_do_dia:+d})")
+        if self._ranking_inicio is not None:
+            final = aplicar_partidas(self._ranking_inicio, variacoes)
+            linhas.append(f"Ranking: {self._ranking_inicio.texto}  →  {final.texto}")
+        return "\n".join(linhas)
+
+    def _calcular_ranking_inicio(self) -> None:
+        """Ranking ao começar o dia aberto: definição (aba Ranking) + RR dos dias anteriores."""
         try:
-            rr_inicio = conversao.inteiro(formulario.get("ranking_rr"), "")
-        except conversao.ErroConversao:
-            rr_inicio = None
-        inicio = Ranking(formulario.get("ranking_elo"), rr_inicio)
-        partes = []
-        if inicio.completo:
-            final = aplicar_rr(inicio, rr_do_dia or 0)
-            partes.append(f"Ranking: {inicio.texto}  →  {final.texto}")
-        if rr_do_dia is not None:
-            partes.append(f"{rr_do_dia:+d} RR no dia" + (" (final estimado)" if inicio.completo else ""))
-        return "  ·  ".join(partes)
+            registros, _ = self.repositorio.carregar_todos()
+            definicoes = self.janela.repositorio_ranking.carregar()
+        except ArquivoCorrompidoError:
+            definicoes = []
+        self._ranking_inicio = ranking_no_inicio_do_dia(self._data, registros, definicoes)
+        if self._ranking_inicio is None:
+            self._rotulo_ranking.configure(
+                text="Ranking não calculado: defina seu elo e RR na aba Ranking (menu ao lado).")
+        else:
+            self._rotulo_ranking.configure(text=f"Ranking ao começar o dia: {self._ranking_inicio.texto}")
 
     def _atualizar_cabecalho(self) -> None:
         self._entrada_data.configure(state="normal")
@@ -407,10 +420,14 @@ class TelaRegistro(TelaBase):
                 self._abrir_edicao(hoje)
             else:
                 self._iniciar_novo(hoje)
-        elif self._modo == EDICAO and self._data not in self._registradas:
-            # O dia foi excluído no Histórico: o conteúdo continua aqui como registro novo.
-            self._modo = NOVO
-            self._atualizar_cabecalho()
+        else:
+            if self._modo == EDICAO and self._data not in self._registradas:
+                # O dia foi excluído no Histórico: o conteúdo continua aqui como registro novo.
+                self._modo = NOVO
+                self._atualizar_cabecalho()
+            # O ranking pode ter sido redefinido na aba Ranking enquanto esta tela estava fechada.
+            self._calcular_ranking_inicio()
+            self._atualizar_resumo()
 
     def _pode_descartar(self) -> bool:
         if not self._tem_alteracoes():
@@ -446,28 +463,15 @@ class TelaRegistro(TelaBase):
     def _iniciar_novo(self, data: date, formulario: dict | None = None) -> None:
         self._modo = NOVO
         self._data = data
+        self._calcular_ranking_inicio()
         self._preencher(self._formulario_vazio(data))
-        self._preencher_ranking_anterior(data)
-        self._base = _sem_data(self._ler())  # base = formulário em branco (com o ranking sugerido)
+        self._base = _sem_data(self._ler())  # base = formulário em branco
         if formulario:
             self._preencher(formulario)
         self._carregado = True
         self._descartar_rascunho()
         self._atualizar_cabecalho()
         self._status("")
-
-    def _preencher_ranking_anterior(self, data: date) -> None:
-        """Sugere como ranking inicial o ranking final do último dia registrado antes desta data."""
-        registros, _ = self.repositorio.carregar_todos()
-        anterior = ranking_mais_recente(registros, antes_de=data)
-        if anterior is None:
-            self._rotulo_ranking_origem.configure(text="")
-            return
-        ranking, dia = anterior
-        self._campos["ranking_elo"].set(ranking.elo)
-        self._campos["ranking_rr"].set(str(ranking.rr))
-        self._rotulo_ranking_origem.configure(text=f"sugerido a partir de {data_curta(dia)}")
-        self._atualizar_resumo()
 
     def _abrir_edicao(self, data: date) -> None:
         try:
@@ -480,7 +484,7 @@ class TelaRegistro(TelaBase):
             return
         self._modo = EDICAO
         self._data = data
-        self._rotulo_ranking_origem.configure(text="")
+        self._calcular_ranking_inicio()
         self._preencher(registro_para_formulario(existente))
         # A base é lida de volta da tela, para comparar sempre "igual com igual".
         self._base = _sem_data(self._ler())
@@ -513,6 +517,8 @@ class TelaRegistro(TelaBase):
             self._atualizar_cabecalho()
             return
         self._data = data
+        self._calcular_ranking_inicio()
+        self._atualizar_resumo()
         self._atualizar_cabecalho()
 
     def _andar_data(self, passo: int) -> None:

@@ -133,7 +133,8 @@ class TelaImportExport(TelaBase):
         if not caminho:
             return
         try:
-            destino = exportar(self.repositorio, semanas, Path(caminho))
+            destino = exportar(self.repositorio, semanas, Path(caminho),
+                               self.janela.repositorio_ranking.carregar())
         except (ArquivoCorrompidoError, VersaoIncompativelError, OSError) as erro:
             messagebox.showerror("Não foi possível exportar", str(erro), parent=self)
             return

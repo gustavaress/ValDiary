@@ -62,24 +62,6 @@ def test_sequencia_quebrada():
     assert sequencia_atual(registros, date(2026, 11, 10)) == 0
 
 
-def test_ranking_mais_recente_usa_o_ranking_final_do_ultimo_dia():
-    from app.analysis.resumo import ranking_mais_recente
-    from app.models import Partida
-    from app.models.ranking import Ranking
-
-    antigo = RegistroDia(data=date(2026, 11, 2))
-    antigo.valorant.ranking_inicio = Ranking("Prata 3", 50)
-    recente = RegistroDia(data=date(2026, 11, 5))
-    recente.valorant.ranking_inicio = Ranking("Ouro 1", 90)
-    recente.valorant.partidas = [Partida(rr=+20), Partida(rr=+15)]
-    sem_ranking = RegistroDia(data=date(2026, 11, 6))
-
-    registros = [antigo, recente, sem_ranking]
-    assert ranking_mais_recente(registros) == (Ranking("Ouro 2", 25), date(2026, 11, 5))
-    assert ranking_mais_recente(registros, antes_de=date(2026, 11, 5)) == (Ranking("Prata 3", 50), date(2026, 11, 2))
-    assert ranking_mais_recente([sem_ranking]) is None
-
-
 def test_rr_da_semana_soma_os_dias():
     from app.models import Partida
     d1, d2 = RegistroDia(data=date(2026, 11, 2)), RegistroDia(data=date(2026, 11, 3))

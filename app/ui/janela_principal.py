@@ -11,6 +11,7 @@ from app import config
 from app.storage import RepositorioDiario
 from app.storage.rascunho import apagar_rascunho, carregar_rascunho
 from app.storage.reorganizacao import reorganizar_se_preciso
+from app.storage.repositorio_ranking import RepositorioRanking
 from app.ui import tema
 from app.ui.formatacao import data_curta
 from app.ui.telas import (
@@ -19,6 +20,7 @@ from app.ui.telas import (
     TelaHistorico,
     TelaImportExport,
     TelaInicio,
+    TelaRanking,
     TelaRegistro,
 )
 from app.ui.telas.base import TelaBase
@@ -27,6 +29,7 @@ from app.ui.telas.base import TelaBase
 TELAS = [
     ("inicio", "Início", TelaInicio),
     ("registro", "Registro diário", TelaRegistro),
+    ("ranking", "Ranking", TelaRanking),
     ("historico", "Histórico", TelaHistorico),
     ("dashboard", "Dashboard", TelaDashboard),
     ("comparacao", "Comparação", TelaComparacao),
@@ -40,6 +43,7 @@ class JanelaPrincipal(ctk.CTk):
         super().__init__(fg_color=tema.COR_FUNDO)
         self.repositorio = repositorio
         self.arquivo_rascunho = arquivo_rascunho
+        self.repositorio_ranking = RepositorioRanking(repositorio.pasta_dados, repositorio.pasta_backups)
         # Antes de qualquer tela ler os dados: ajusta arquivos do formato antigo
         # de semanas (segunda a domingo) para o atual (domingo a sábado).
         self._reorganizacao = reorganizar_se_preciso(repositorio)

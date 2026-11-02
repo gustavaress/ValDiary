@@ -55,8 +55,8 @@ def _v2_para_v3(documento: dict) -> dict:
 
 
 def _v3_para_v4(documento: dict) -> dict:
-    """v4: ranking do dia e RR por partida (campos novos, vazios nos dias antigos)
-    e semanas de domingo a sábado (a reorganização dos arquivos é feita à parte,
+    """v4: RR por partida (campo novo, vazio nos dias antigos; o ranking em si
+    fica em ranking.json) e semanas de domingo a sábado (a reorganização dos arquivos é feita à parte,
     em reorganizacao.py, porque muda dias de arquivo)."""
     documento["versao_schema"] = 4
     return documento

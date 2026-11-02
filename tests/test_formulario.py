@@ -151,25 +151,12 @@ def test_refeicao_marcada_sem_detalhes():
     assert registro.rotina.alimentacao.cafe_da_manha.realizada is True
 
 
-def test_ranking_e_rr_atravessam_o_formulario():
-    from app.models.ranking import Ranking
+
+def test_rr_das_partidas_atravessa_o_formulario():
     r = _registro()
-    r.valorant.ranking_inicio = Ranking("Ouro 2", 85)
     r.valorant.partidas[0].rr = 18
     r.valorant.partidas[1].rr = -14
     formulario = registro_para_formulario(r)
-    assert formulario["ranking_elo"] == "Ouro 2" and formulario["ranking_rr"] == "85"
     assert [p["rr"] for p in formulario["partidas"]] == ["+18", "-14"]  # sinal sempre visível
-
     reconstruido, erros = formulario_para_registro(formulario)
-    assert erros == []
-    assert reconstruido.valorant.resumo.rr == 4
-    assert reconstruido.valorant.ranking_final == Ranking("Ouro 2", 89)
-
-
-def test_ranking_pela_metade_e_erro():
-    from app.models import validar_registro
-    formulario = registro_para_formulario(_registro())
-    formulario["ranking_elo"] = "Ouro 2"   # sem RR
-    registro, _ = formulario_para_registro(formulario)
-    assert any("preencha o elo e o RR" in e for e in validar_registro(registro))
+    assert erros == [] and reconstruido.valorant.resumo.rr == 4

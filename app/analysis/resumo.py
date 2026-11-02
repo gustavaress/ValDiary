@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 from app.models import RegistroDia, ResumoJogo
-from app.models.ranking import Ranking
 
 
 @dataclass
@@ -99,15 +98,3 @@ def sequencia_atual(registros: list[RegistroDia], hoje: date) -> int:
         dia -= timedelta(days=1)
     return contagem
 
-
-def ranking_mais_recente(registros: list[RegistroDia], antes_de: date | None = None) -> tuple[Ranking, date] | None:
-    """Ranking ao fim do dia mais recente que tem ranking (opcionalmente, antes de uma data).
-
-    Retorna (ranking, data do dia) ou None se nenhum dia tem ranking.
-    """
-    candidatos = [r for r in registros
-                  if r.valorant.ranking_final and (antes_de is None or r.data < antes_de)]
-    if not candidatos:
-        return None
-    ultimo = max(candidatos, key=lambda r: r.data)
-    return ultimo.valorant.ranking_final, ultimo.data

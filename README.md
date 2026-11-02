@@ -22,7 +22,7 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
 | 🎮 | **Registro por partida** (agente pela bandeja de fotos, resultado, K/D/A, HS%, ACS) com resumo do dia calculado | ✅ |
 | 📅 | Validador de data: não deixa registrar dias já preenchidos nem datas futuras | ✅ |
-| 🏆 | **Ranking**: elo e RR do dia, RR ganho/perdido por partida e ranking final estimado | ✅ |
+| 🏆 | **Ranking**: aba própria para definir o elo; o app aplica o RR de cada partida (com proteção contra rebaixamento) | ✅ |
 | 🧮 | Cálculo automático de horas de sono, K/D, KDA e winrate | ✅ |
 | 💾 | **Rascunho automático**: nada se perde se o app fechar antes de salvar | ✅ |
 | 📚 | **Histórico** com filtros por classificação, período e busca nas anotações | ✅ |
@@ -68,6 +68,7 @@ dados/
 │   └── semana_45.json
 ├── _backups/               ← versões anteriores de cada semana (últimas 10)
 ├── _exportacoes/
+├── ranking.json            ← definições de elo/RR feitas na aba Ranking
 └── _rascunho.json          ← formulário não salvo (temporário)
 ```
 
@@ -117,7 +118,6 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
         "jogou": true,
         "horario_inicio": "19:30",
         "horario_fim": "23:00",
-        "ranking_inicio": { "elo": "Ouro 2", "rr": 85 },
         "partidas": [
           { "agente": "Jett", "resultado": "vitoria", "abates": 20, "mortes": 15, "assistencias": 5, "hs_pct": 30.0, "acs": 260, "rr": 21 },
           { "agente": "Raze", "resultado": "derrota", "abates": 14, "mortes": 16, "assistencias": 6, "hs_pct": 22.0, "acs": 190, "rr": -16 }
@@ -129,8 +129,7 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
           "partidas": 2, "vitorias": 1, "derrotas": 1, "empates": 0,
           "abates": 34, "mortes": 31, "assistencias": 11, "hs_pct": 26.0, "acs": 225.0,
           "agentes": { "Jett": 1, "Raze": 1 }, "partidas_com_resultado": 2, "rr": 5,
-          "kd": 1.1, "kda": 1.45, "kda_texto": "34/31/11", "winrate_pct": 50.0,
-          "ranking_final": { "elo": "Ouro 2", "rr": 90 }
+          "kd": 1.1, "kda": 1.45, "kda_texto": "34/31/11", "winrate_pct": 50.0
         }
       },
       "criado_em": "2026-11-02T23:40:02",
@@ -153,7 +152,7 @@ O campo `versao_schema` indica o formato do arquivo. Quando o formato muda, o ap
 | 1 | Formato inicial |
 | 2 | Refeições ganham `realizada`; `agentes` passa de lista de nomes para `{nome, partidas}` |
 | 3 | Valorant registrado **por partida**; totais antigos do dia vão para `legado`; ADR sai das análises |
-| 4 | Ranking do dia (`ranking_inicio`) e RR por partida; semanas passam a ir de **domingo a sábado** |
+| 4 | RR por partida (o ranking fica em `dados/ranking.json`); semanas passam a ir de **domingo a sábado** |
 
 ## Imagens dos agentes
 
@@ -175,10 +174,14 @@ python scripts/gerar_agentes.py
 
 ## Ranking
 
-- Na aba **Partidas**, informe o **elo e o RR no início do dia**. Num registro novo, eles já vêm preenchidos com o ranking final do último dia registrado.
-- Em cada partida, informe o **RR ganho ou perdido** (ex.: `+18`, `-14`).
-- O app soma o RR do dia e **estima** o ranking final: cada divisão vai de 0 a 100 RR; passar de 100 promove, ficar abaixo de 0 rebaixa. No Imortal e no Radiante o RR acumula sem teto.
-- É uma estimativa: o jogo tem regras próprias (ex.: proteção contra rebaixamento). Se o ranking real for diferente, corrija o ranking inicial do dia seguinte.
+- Na aba **Ranking**, defina seu **elo e RR** e a data a partir da qual valem. Normalmente isso é feito uma vez; refaça só se o cálculo ficar diferente do jogo. As definições ficam em `dados/ranking.json`.
+- No **registro diário**, informe apenas o **RR ganho ou perdido em cada partida** (ex.: `-20`, `+17`). O app calcula o ranking partida a partida, na ordem:
+  - chegar a 100 RR promove (o excedente vai para o elo seguinte);
+  - **proteção contra rebaixamento**: perder com RR acima de 0 zera os pontos, sem cair de elo;
+  - perder já com 0 RR rebaixa para o elo anterior com 100 menos a perda;
+  - no Imortal e no Radiante o RR só acumula (a divisão depende do ranking global).
+- Exemplo: Ascendente 3 com 1 RR, perde 20 (zera) e ganha 17 → **Ascendente 3 com 17 RR**.
+- O ranking é sempre recalculado a partir das definições e das partidas, então registrar um dia antigo ou corrigir um RR ajusta tudo sozinho. É uma estimativa das regras do jogo.
 
 ## Como a comparação funciona
 

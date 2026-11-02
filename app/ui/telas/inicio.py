@@ -4,7 +4,9 @@ from datetime import date, timedelta
 
 import customtkinter as ctk
 
-from app.analysis.resumo import ranking_mais_recente, resumir, sequencia_atual
+from app.analysis.ranking import ranking_atual
+from app.analysis.resumo import resumir, sequencia_atual
+from app.storage import ArquivoCorrompidoError
 from app.storage.semanas import periodo_semana, semana_da_data
 from app.ui import tema
 from app.ui.componentes import CartaoInfo
@@ -102,11 +104,14 @@ class TelaInicio(TelaBase):
         self._sequencia.atualizar(f"{sequencia} dia{'s' if sequencia != 1 else ''}",
                                   "registrando sem falhar")
 
-        atual = ranking_mais_recente(registros)
-        if atual is None:
-            self._ranking.atualizar("—", "registre seu elo na aba Partidas")
+        try:
+            definicoes = self.janela.repositorio_ranking.carregar()
+        except ArquivoCorrompidoError:
+            definicoes = []
+        ranking = ranking_atual(registros, definicoes)
+        if ranking is None:
+            self._ranking.atualizar("—", "defina seu elo na aba Ranking")
         else:
-            ranking, _ = atual
             rr_semana = resumir(da_semana).rr
             detalhe = f"{ranking.rr} RR"
             if rr_semana is not None:

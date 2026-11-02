@@ -6,12 +6,14 @@ consigam interpretá-lo sem ambiguidade.
 """
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 
 from app import config
 from app.models import RegistroDia, validar_registro
+from app.analysis.ranking import evolucao_ranking
+from app.models.ranking import DefinicaoRanking
 from app.storage.escrita_segura import escrever_json_atomico
 from app.storage.migracoes import migrar_documento
 from app.storage.repositorio import RepositorioDiario
@@ -30,10 +32,10 @@ LEGENDA = {
                 "assistencias são totais do dia; hs_pct e acs são médias por partida; 'agentes' conta "
                 "em quantas partidas cada agente foi jogado. Dias antigos podem ter só 'legado' "
                 "(totais do dia digitados antes do registro por partida), sem a lista de partidas.",
-    "ranking": "'ranking_inicio' é o elo e o RR (pontos, 0 a 100 por divisão) no começo do dia. "
-               "Cada partida tem 'rr' = pontos ganhos (+) ou perdidos (-). 'resumo.rr' é a soma do dia e "
-               "'resumo.ranking_final' é uma ESTIMATIVA do ranking ao fim do dia (o jogo tem regras "
-               "próprias, como proteção contra rebaixamento).",
+    "ranking": "Cada partida tem 'rr' = pontos de ranking ganhos (+) ou perdidos (-); 'resumo.rr' é a "
+               "soma do dia. O bloco 'ranking' no topo traz as definições feitas pelo jogador (elo e RR "
+               "a partir de uma data) e a evolução calculada por dia (início, RR do dia, fim), aplicando "
+               "o RR partida a partida com a proteção contra rebaixamento. É uma estimativa.",
     "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",
@@ -64,17 +66,33 @@ class ErroImportacao(Exception):
 
 # --- Exportação -----------------------------------------------------------
 
-def montar_pacote(repositorio: RepositorioDiario, semanas: list[tuple[int, int]]) -> dict:
-    return {
+def montar_pacote(repositorio: RepositorioDiario, semanas: list[tuple[int, int]],
+                  definicoes_ranking: list[DefinicaoRanking] | None = None) -> dict:
+    documentos = [
+        repositorio.montar_documento_semana(ano, semana, repositorio.carregar_semana(ano, semana))
+        for ano, semana in sorted(semanas)
+    ]
+    pacote = {
         "formato": FORMATO,
         "versao_schema": config.VERSAO_SCHEMA,
         "exportado_em": datetime.now().isoformat(timespec="seconds"),
         "_legenda": LEGENDA,
-        "semanas": [
-            repositorio.montar_documento_semana(ano, semana, repositorio.carregar_semana(ano, semana))
-            for ano, semana in sorted(semanas)
-        ],
+        "semanas": documentos,
     }
+    if definicoes_ranking:
+        # Evolução calculada com TODOS os dias (o ranking depende dos dias anteriores),
+        # mas só os dias exportados entram no pacote.
+        datas = {dia["data"] for documento in documentos for dia in documento["dias"]}
+        evolucao = evolucao_ranking(repositorio.carregar_todos()[0], definicoes_ranking)
+        pacote["ranking"] = {
+            "definicoes": [d.to_dict() for d in definicoes_ranking],
+            "evolucao_por_dia": [
+                {"data": e.data.isoformat(), "inicio": asdict(e.inicio), "rr_do_dia": e.rr,
+                 "fim": asdict(e.final)}
+                for e in evolucao if e.data.isoformat() in datas
+            ],
+        }
+    return pacote
 
 
 def nome_arquivo_sugerido(semanas: list[tuple[int, int]]) -> str:
@@ -86,10 +104,11 @@ def nome_arquivo_sugerido(semanas: list[tuple[int, int]]) -> str:
     return f"valdiary_{primeira}_a_{ultima}.json"
 
 
-def exportar(repositorio: RepositorioDiario, semanas: list[tuple[int, int]], destino: Path) -> Path:
+def exportar(repositorio: RepositorioDiario, semanas: list[tuple[int, int]], destino: Path,
+             definicoes_ranking: list[DefinicaoRanking] | None = None) -> Path:
     if not semanas:
         raise ValueError("Nenhuma semana selecionada.")
-    escrever_json_atomico(destino, montar_pacote(repositorio, semanas))
+    escrever_json_atomico(destino, montar_pacote(repositorio, semanas, definicoes_ranking))
     return destino
 
 
