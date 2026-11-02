@@ -10,6 +10,7 @@ import customtkinter as ctk
 from app import config
 from app.storage import RepositorioDiario
 from app.storage.rascunho import apagar_rascunho, carregar_rascunho
+from app.storage.reorganizacao import reorganizar_se_preciso
 from app.ui import tema
 from app.ui.formatacao import data_curta
 from app.ui.telas import (
@@ -39,6 +40,9 @@ class JanelaPrincipal(ctk.CTk):
         super().__init__(fg_color=tema.COR_FUNDO)
         self.repositorio = repositorio
         self.arquivo_rascunho = arquivo_rascunho
+        # Antes de qualquer tela ler os dados: ajusta arquivos do formato antigo
+        # de semanas (segunda a domingo) para o atual (domingo a sábado).
+        self._reorganizacao = reorganizar_se_preciso(repositorio)
 
         self.title(config.NOME_APP)
         self.geometry("1200x760")
@@ -131,8 +135,21 @@ class JanelaPrincipal(ctk.CTk):
     # --- Avisos -----------------------------------------------------------
 
     def _verificacoes_iniciais(self) -> None:
+        self._avisar_reorganizacao()
         self._avisar_arquivos_com_problema()
         self._oferecer_rascunho()
+
+    def _avisar_reorganizacao(self) -> None:
+        resultado = self._reorganizacao
+        if resultado is None or (resultado.dias == 0 and not resultado.ignorados):
+            return
+        texto = (f"A semana agora começa no domingo. Seus {resultado.dias} dias registrados foram "
+                 f"redistribuídos nos arquivos semanais novos.\n\n"
+                 f"Uma cópia dos arquivos antigos foi guardada em:\n{resultado.backup}")
+        if resultado.ignorados:
+            lista = "\n".join(f"• {a.parent.name}/{a.name}" for a in resultado.ignorados)
+            texto += f"\n\nNão foi possível ler (ficaram só no backup):\n{lista}"
+        messagebox.showinfo("Dados reorganizados", texto, parent=self)
 
     def _oferecer_rascunho(self) -> None:
         rascunho = carregar_rascunho(self.arquivo_rascunho)

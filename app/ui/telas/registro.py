@@ -12,8 +12,10 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
+from app.analysis.resumo import ranking_mais_recente
 from app.models import RegistroDia, calcular_horas_sono, validar_registro
 from app.models.datas import data_livre_mais_recente, erro_data_nova, proxima_data_livre
+from app.models.ranking import ELOS, Ranking, aplicar_rr
 from app.storage import ArquivoCorrompidoError, RegistroDuplicadoError, VersaoIncompativelError
 from app.storage.rascunho import apagar_rascunho, salvar_rascunho
 from app.ui import conversao, tema
@@ -22,6 +24,7 @@ from app.ui.componentes import (
     CampoHorario,
     CampoMarcacao,
     CampoNota,
+    CampoOpcao,
     CampoTextoLongo,
     ListaEditavel,
     ListaPartidas,
@@ -239,8 +242,19 @@ class TelaRegistro(TelaBase):
         ], colunas=1)
 
     def _montar_aba_partidas(self, area) -> None:
-        secao = Secao(area, "Resumo do dia", "Calculado automaticamente a partir das partidas abaixo.")
+        secao = Secao(area, "Ranking no início do dia",
+                      "Preenchido com o ranking final do último dia registrado. Corrija se estiver diferente.")
         secao.pack(fill="x", pady=(0, 10))
+        elo = CampoOpcao(secao.conteudo, "Elo", ELOS, ao_mudar=self._atualizar_resumo)
+        rr = CampoEntrada(secao.conteudo, "RR (pontos)", largura=90, placeholder="0 a 100")
+        rr.ao_digitar(self._atualizar_resumo)
+        self._grade(secao, [("ranking_elo", elo), ("ranking_rr", rr)])
+        self._rotulo_ranking_origem = ctk.CTkLabel(secao.conteudo, text="", font=tema.fonte_pequena(),
+                                                   text_color=tema.COR_TEXTO_SECUNDARIO)
+        self._rotulo_ranking_origem.grid(row=0, column=2, sticky="sw", pady=(0, 10))
+
+        secao = Secao(area, "Resumo do dia", "Calculado automaticamente a partir das partidas abaixo.")
+        secao.pack(fill="x", pady=10)
         self._rotulo_resumo = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
                                            font=tema.fonte_normal(), text_color=tema.COR_TEXTO)
         self._rotulo_resumo.pack(anchor="w")
@@ -309,10 +323,8 @@ class TelaRegistro(TelaBase):
     def _atualizar_resumo(self) -> None:
         formulario = self._ler()
         resumo = resumo_ao_vivo(formulario)
-        if not resumo.partidas:
-            self._rotulo_resumo.configure(text="Adicione partidas para ver o resumo do dia.",
-                                          text_color=tema.COR_TEXTO_SECUNDARIO)
-        else:
+        linhas = []
+        if resumo.partidas:
             resultados = [f"{n} {letra}" for n, letra in ((resumo.vitorias, "V"), (resumo.derrotas, "D"),
                                                          (resumo.empates, "E")) if n is not None]
             linha1 = [f"{resumo.partidas} partida(s)", *resultados]
@@ -326,8 +338,15 @@ class TelaRegistro(TelaBase):
             if resumo.acs is not None:
                 linha2.append(f"ACS médio {numero(resumo.acs, 0)}")
             agentes = "  ·  ".join(f"{nome} ×{n}" if n else nome for nome, n in resumo.agentes.items())
-            linhas = ["  ·  ".join(linha1), "  ·  ".join(linha2), f"Agentes: {agentes}" if agentes else ""]
-            self._rotulo_resumo.configure(text="\n".join(l for l in linhas if l), text_color=tema.COR_TEXTO)
+            linhas += ["  ·  ".join(linha1), "  ·  ".join(linha2), f"Agentes: {agentes}" if agentes else ""]
+        linhas.append(self._texto_ranking(formulario, resumo.rr))
+
+        linhas = [linha for linha in linhas if linha]
+        if linhas:
+            self._rotulo_resumo.configure(text="\n".join(linhas), text_color=tema.COR_TEXTO)
+        else:
+            self._rotulo_resumo.configure(text="Adicione partidas para ver o resumo do dia.",
+                                          text_color=tema.COR_TEXTO_SECUNDARIO)
 
         tem_partidas = any(p.get("agente") or p.get("abates") or p.get("resultado")
                            for p in formulario.get("partidas") or [])
@@ -337,6 +356,22 @@ class TelaRegistro(TelaBase):
                 "digitados na época. Se você adicionar partidas, elas passam a valer no lugar desses totais."))
         else:
             self._rotulo_legado.configure(text="")
+
+    @staticmethod
+    def _texto_ranking(formulario: dict, rr_do_dia: int | None) -> str:
+        """ "Ranking: Ouro 2 · 85 RR  →  Ouro 3 · 23 RR  ·  +38 RR no dia (final estimado)" """
+        try:
+            rr_inicio = conversao.inteiro(formulario.get("ranking_rr"), "")
+        except conversao.ErroConversao:
+            rr_inicio = None
+        inicio = Ranking(formulario.get("ranking_elo"), rr_inicio)
+        partes = []
+        if inicio.completo:
+            final = aplicar_rr(inicio, rr_do_dia or 0)
+            partes.append(f"Ranking: {inicio.texto}  →  {final.texto}")
+        if rr_do_dia is not None:
+            partes.append(f"{rr_do_dia:+d} RR no dia" + (" (final estimado)" if inicio.completo else ""))
+        return "  ·  ".join(partes)
 
     def _atualizar_cabecalho(self) -> None:
         self._entrada_data.configure(state="normal")
@@ -412,13 +447,27 @@ class TelaRegistro(TelaBase):
         self._modo = NOVO
         self._data = data
         self._preencher(self._formulario_vazio(data))
-        self._base = _sem_data(self._ler())  # base = formulário em branco
+        self._preencher_ranking_anterior(data)
+        self._base = _sem_data(self._ler())  # base = formulário em branco (com o ranking sugerido)
         if formulario:
             self._preencher(formulario)
         self._carregado = True
         self._descartar_rascunho()
         self._atualizar_cabecalho()
         self._status("")
+
+    def _preencher_ranking_anterior(self, data: date) -> None:
+        """Sugere como ranking inicial o ranking final do último dia registrado antes desta data."""
+        registros, _ = self.repositorio.carregar_todos()
+        anterior = ranking_mais_recente(registros, antes_de=data)
+        if anterior is None:
+            self._rotulo_ranking_origem.configure(text="")
+            return
+        ranking, dia = anterior
+        self._campos["ranking_elo"].set(ranking.elo)
+        self._campos["ranking_rr"].set(str(ranking.rr))
+        self._rotulo_ranking_origem.configure(text=f"sugerido a partir de {data_curta(dia)}")
+        self._atualizar_resumo()
 
     def _abrir_edicao(self, data: date) -> None:
         try:
@@ -431,6 +480,7 @@ class TelaRegistro(TelaBase):
             return
         self._modo = EDICAO
         self._data = data
+        self._rotulo_ranking_origem.configure(text="")
         self._preencher(registro_para_formulario(existente))
         # A base é lida de volta da tela, para comparar sempre "igual com igual".
         self._base = _sem_data(self._ler())

@@ -35,6 +35,7 @@ METRICAS = [
     Metrica("kda", "KDA", "Valorant", 2),
     Metrica("acs", "ACS", "Valorant", 0),
     Metrica("hs_pct", "HS%", "Valorant", 1, "%"),
+    Metrica("rr", "RR do dia", "Valorant", 0, " RR"),
     Metrica("mira", "Sensação da mira", "Valorant", nota=True),
     Metrica("movimentacao", "Movimentação", "Valorant", nota=True),
     Metrica("tomada_decisao", "Tomada de decisão", "Valorant", nota=True),

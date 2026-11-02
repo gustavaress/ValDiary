@@ -54,7 +54,15 @@ def _v2_para_v3(documento: dict) -> dict:
     return documento
 
 
-_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3}
+def _v3_para_v4(documento: dict) -> dict:
+    """v4: ranking do dia e RR por partida (campos novos, vazios nos dias antigos)
+    e semanas de domingo a sábado (a reorganização dos arquivos é feita à parte,
+    em reorganizacao.py, porque muda dias de arquivo)."""
+    documento["versao_schema"] = 4
+    return documento
+
+
+_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3, 3: _v3_para_v4}
 
 
 def migrar_documento(documento: dict) -> dict:

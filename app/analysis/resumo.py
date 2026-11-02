@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 from app.models import RegistroDia, ResumoJogo
+from app.models.ranking import Ranking
 
 
 @dataclass
@@ -18,6 +19,7 @@ class ResumoPeriodo:
     hs_medio: float | None = None
     sono_medio: float | None = None
     concentracao_media: float | None = None
+    rr: int | None = None
     classificacoes: Counter = field(default_factory=Counter)
 
 
@@ -64,6 +66,7 @@ def resumir(registros: list[RegistroDia]) -> ResumoPeriodo:
         hs_medio=_media_por_partida(resumos, "hs_pct"),
         sono_medio=_media(r.rotina.sono.horas_efetivas for r in registros),
         concentracao_media=_media(r.valorant.avaliacao.concentracao for r in registros),
+        rr=_soma(r.rr for r in resumos),
         classificacoes=Counter(r.classificacao.value for r in registros if r.classificacao),
     )
 
@@ -95,3 +98,16 @@ def sequencia_atual(registros: list[RegistroDia], hoje: date) -> int:
         contagem += 1
         dia -= timedelta(days=1)
     return contagem
+
+
+def ranking_mais_recente(registros: list[RegistroDia], antes_de: date | None = None) -> tuple[Ranking, date] | None:
+    """Ranking ao fim do dia mais recente que tem ranking (opcionalmente, antes de uma data).
+
+    Retorna (ranking, data do dia) ou None se nenhum dia tem ranking.
+    """
+    candidatos = [r for r in registros
+                  if r.valorant.ranking_final and (antes_de is None or r.data < antes_de)]
+    if not candidatos:
+        return None
+    ultimo = max(candidatos, key=lambda r: r.data)
+    return ultimo.valorant.ranking_final, ultimo.data

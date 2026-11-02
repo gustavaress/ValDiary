@@ -7,6 +7,7 @@ Campos vazios (None) nunca são erro, porque nada é obrigatório além da data.
 import re
 
 from app.config import ESCALA_MAX, ESCALA_MIN
+from app.models.ranking import erros_ranking
 from app.models.registro import RESULTADOS, RegistroDia
 
 _FORMATO_HORA = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -76,5 +77,12 @@ def validar_registro(registro: RegistroDia) -> list[str]:
             erros.append(f"{rotulo} (HS%): deve estar entre 0 e 100.")
         if partida.resultado is not None and partida.resultado not in RESULTADOS:
             erros.append(f"{rotulo}: resultado inválido.")
+        if partida.rr is not None and not (-100 <= partida.rr <= 100):
+            erros.append(f"{rotulo} (RR): deve estar entre -100 e +100.")
+
+    ranking = jogo.ranking_inicio
+    erros.extend(erros_ranking(ranking, "Ranking no início do dia"))
+    if (ranking.elo is None) != (ranking.rr is None):
+        erros.append("Ranking no início do dia: preencha o elo e o RR (ou deixe os dois vazios).")
 
     return erros

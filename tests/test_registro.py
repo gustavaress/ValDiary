@@ -111,11 +111,18 @@ def test_resumo_vem_do_legado_quando_nao_ha_partidas():
     assert jogo.resumo.partidas == 1 and jogo.resumo.kd == 1.0
 
 
-def test_semana_iso_na_virada_do_ano():
-    # 31/12/2026 é quinta-feira e pertence à semana 53 de 2026.
-    assert RegistroDia(data=date(2026, 12, 31)).semana_iso == (2026, 53)
-    # 01/01/2027 é sexta-feira e ainda pertence à semana 53 de 2026.
-    assert RegistroDia(data=date(2027, 1, 1)).semana_iso == (2026, 53)
+def test_semana_comeca_no_domingo():
+    # Domingo 01/11/2026 e sábado 07/11/2026 estão na mesma semana; domingo 08/11 abre a próxima.
+    assert RegistroDia(data=date(2026, 11, 1)).semana == (2026, 45)
+    assert RegistroDia(data=date(2026, 11, 7)).semana == (2026, 45)
+    assert RegistroDia(data=date(2026, 11, 8)).semana == (2026, 46)
+
+
+def test_semana_na_virada_do_ano():
+    # A semana de 27/12/2026 a 02/01/2027 tem 5 dias em 2026: é a semana 53 de 2026.
+    assert RegistroDia(data=date(2027, 1, 2)).semana == (2026, 53)
+    # Domingo 03/01/2027 abre a semana 1 de 2027.
+    assert RegistroDia(data=date(2027, 1, 3)).semana == (2027, 1)
 
 
 def test_registro_valido_nao_tem_erros():

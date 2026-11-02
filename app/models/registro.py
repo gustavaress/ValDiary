@@ -12,6 +12,9 @@ from dataclasses import asdict, dataclass, field, fields
 from datetime import date, datetime
 from enum import StrEnum
 
+from app.models.datas import semana_da_data
+from app.models.ranking import Ranking, aplicar_rr
+
 DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]
 
 
@@ -153,6 +156,7 @@ class Partida:
     assistencias: int | None = None
     hs_pct: float | None = None
     acs: float | None = None
+    rr: int | None = None  # pontos de ranking ganhos (+) ou perdidos (-) na partida
 
     @property
     def kd(self) -> float | None:
@@ -181,6 +185,7 @@ class ResumoJogo:
     hs_pct: float | None = None        # médias por partida
     acs: float | None = None
     agentes: dict = field(default_factory=dict)  # {"Jett": 3, ...}
+    rr: int | None = None              # soma do RR das partidas do dia
     # Base do winrate: partidas com resultado conhecido (partidas sem resultado
     # marcado não contam como derrota).
     partidas_com_resultado: int | None = None
@@ -242,6 +247,7 @@ def resumir_partidas(partidas: list[Partida]) -> ResumoJogo:
         acs=_media(p.acs for p in partidas),
         agentes=agentes,
         partidas_com_resultado=len(resultados) or None,
+        rr=_soma(p.rr for p in partidas),
     )
 
 
@@ -279,6 +285,7 @@ class Valorant:
     jogou: bool | None = None
     horario_inicio: str | None = None
     horario_fim: str | None = None
+    ranking_inicio: Ranking = field(default_factory=Ranking)
 
     partidas: list[Partida] = field(default_factory=list)
     avaliacao: AvaliacaoJogo = field(default_factory=AvaliacaoJogo)
@@ -299,20 +306,31 @@ class Valorant:
     def nomes_agentes(self) -> list[str]:
         return list(self.resumo.agentes)
 
+    @property
+    def ranking_final(self) -> Ranking | None:
+        """Ranking estimado ao fim do dia (ranking inicial + RR das partidas)."""
+        if not self.ranking_inicio.completo:
+            return None
+        return aplicar_rr(self.ranking_inicio, self.resumo.rr or 0)
+
     def to_dict(self) -> dict:
         dados = asdict(self)
         # O resumo vai para o JSON para facilitar a leitura humana e pela IA,
         # mas é ignorado ao carregar (sempre recalculado).
         dados["resumo"] = self.resumo.to_dict()
+        final = self.ranking_final
+        dados["resumo"]["ranking_final"] = asdict(final) if final else None
         return dados
 
     @classmethod
     def from_dict(cls, dados: dict | None) -> "Valorant":
         dados = dict(dados or {})
         avaliacao = _simples(AvaliacaoJogo, dados.pop("avaliacao", None))
+        ranking = _simples(Ranking, dados.pop("ranking_inicio", None))
         partidas = dados.pop("partidas", None) or []
         objeto = _simples(cls, dados)
         objeto.avaliacao = avaliacao
+        objeto.ranking_inicio = ranking
         objeto.partidas = [_simples(Partida, p) for p in partidas]
         return objeto
 
@@ -329,10 +347,9 @@ class RegistroDia:
     editado_em: datetime | None = None
 
     @property
-    def semana_iso(self) -> tuple[int, int]:
-        """(ano ISO, semana ISO). Define em qual arquivo o dia é salvo."""
-        ano, semana, _ = self.data.isocalendar()
-        return ano, semana
+    def semana(self) -> tuple[int, int]:
+        """(ano, número da semana de domingo a sábado). Define em qual arquivo o dia é salvo."""
+        return semana_da_data(self.data)
 
     def to_dict(self) -> dict:
         return {

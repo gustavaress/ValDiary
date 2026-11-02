@@ -22,6 +22,7 @@ from app.models import (
     calcular_horas_sono,
     resumir_partidas,
 )
+from app.models.ranking import Ranking
 from app.ui import conversao
 from app.ui.conversao import ErroConversao, para_campo
 
@@ -67,10 +68,12 @@ def registro_para_formulario(registro: RegistroDia) -> dict:
         "jogou": {True: "sim", False: "nao"}.get(jogo.jogou),
         "jogo_inicio": jogo.horario_inicio or "",
         "jogo_fim": jogo.horario_fim or "",
+        "ranking_elo": jogo.ranking_inicio.elo,
+        "ranking_rr": para_campo(jogo.ranking_inicio.rr),
         "partidas": [
             {"agente": p.agente or "", "resultado": p.resultado, "abates": para_campo(p.abates),
              "mortes": para_campo(p.mortes), "assistencias": para_campo(p.assistencias),
-             "hs_pct": para_campo(p.hs_pct), "acs": para_campo(p.acs)}
+             "hs_pct": para_campo(p.hs_pct), "acs": para_campo(p.acs), "rr": _rr_para_campo(p.rr)}
             for p in jogo.partidas
         ],
         # Não tem campo na tela: só atravessa o formulário para não se perder ao salvar.
@@ -176,6 +179,8 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     jogo.jogou = {"sim": True, "nao": False}.get(formulario.get("jogou"))
     jogo.horario_inicio = ler.hora("jogo_inicio", "Início do jogo")
     jogo.horario_fim = ler.hora("jogo_fim", "Fim do jogo")
+    jogo.ranking_inicio = Ranking(elo=formulario.get("ranking_elo") or None,
+                                  rr=ler.inteiro("ranking_rr", "Ranking no início do dia (RR)"))
     jogo.partidas = _ler_partidas(formulario.get("partidas") or [], ler)
     jogo.legado = formulario.get("legado")
     for nota in _NOTAS_AVALIACAO:
@@ -189,6 +194,11 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     if ler.erros:
         return None, ler.erros
     return registro, []
+
+
+def _rr_para_campo(rr: int | None) -> str:
+    """Variação de RR com sinal explícito: 18 -> "+18", -14 -> "-14"."""
+    return "" if rr is None else f"{rr:+d}"
 
 
 def _partida_vazia(dados: dict) -> bool:
@@ -209,6 +219,7 @@ def _ler_partidas(lista: list[dict], ler: _Leitor) -> list[Partida]:
             assistencias=ler.inteiro_valor(dados.get("assistencias"), f"{rotulo} (assistências)"),
             hs_pct=ler.decimal_valor(dados.get("hs_pct"), f"{rotulo} (HS%)"),
             acs=ler.decimal_valor(dados.get("acs"), f"{rotulo} (ACS)"),
+            rr=ler.inteiro_valor(dados.get("rr"), f"{rotulo} (RR)"),
         ))
     return partidas
 

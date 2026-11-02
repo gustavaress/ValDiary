@@ -30,10 +30,14 @@ LEGENDA = {
                 "assistencias são totais do dia; hs_pct e acs são médias por partida; 'agentes' conta "
                 "em quantas partidas cada agente foi jogado. Dias antigos podem ter só 'legado' "
                 "(totais do dia digitados antes do registro por partida), sem a lista de partidas.",
+    "ranking": "'ranking_inicio' é o elo e o RR (pontos, 0 a 100 por divisão) no começo do dia. "
+               "Cada partida tem 'rr' = pontos ganhos (+) ou perdidos (-). 'resumo.rr' é a soma do dia e "
+               "'resumo.ranking_final' é uma ESTIMATIVA do ranking ao fim do dia (o jogo tem regras "
+               "próprias, como proteção contra rebaixamento).",
     "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",
-    "semanas": "Semanas no padrão ISO 8601 (segunda a domingo).",
+    "semanas": "Semanas de domingo a sábado. A semana 1 é a primeira com pelo menos 4 dias no ano novo.",
 }
 
 PROMPT_CHATGPT = """Vou te enviar um arquivo JSON exportado do meu diário de rotina e desempenho no Valorant. O bloco "_legenda" do arquivo explica cada campo e as escalas usadas.

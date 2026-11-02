@@ -21,6 +21,7 @@ COLUNAS = [
     ("kd", "K/D", 60, "center"),
     ("acs", "ACS", 60, "center"),
     ("hs", "HS%", 60, "center"),
+    ("rr", "RR", 55, "center"),
     ("mira", "Mira", 50, "center"),
     ("concentracao", "Conc.", 50, "center"),
 ]
@@ -52,6 +53,7 @@ def _valores_linha(registro) -> tuple:
         numero(jogo.kd),
         numero(jogo.acs, 0),
         numero(jogo.hs_pct, 1),
+        f"{jogo.rr:+d}" if jogo.rr is not None else "—",
         numero(avaliacao.mira),
         numero(avaliacao.concentracao),
     )

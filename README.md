@@ -22,6 +22,7 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
 | 🎮 | **Registro por partida** (agente pela bandeja de fotos, resultado, K/D/A, HS%, ACS) com resumo do dia calculado | ✅ |
 | 📅 | Validador de data: não deixa registrar dias já preenchidos nem datas futuras | ✅ |
+| 🏆 | **Ranking**: elo e RR do dia, RR ganho/perdido por partida e ranking final estimado | ✅ |
 | 🧮 | Cálculo automático de horas de sono, K/D, KDA e winrate | ✅ |
 | 💾 | **Rascunho automático**: nada se perde se o app fechar antes de salvar | ✅ |
 | 📚 | **Histórico** com filtros por classificação, período e busca nas anotações | ✅ |
@@ -70,7 +71,8 @@ dados/
 └── _rascunho.json          ← formulário não salvo (temporário)
 ```
 
-- As semanas seguem o padrão **ISO 8601** (começam na segunda-feira). Por isso, alguns dias do início de janeiro pertencem à última semana do ano anterior. Exemplo: 01/01/2027 fica em `2026/semana_53.json`.
+- As semanas vão de **domingo a sábado**. A semana 1 é a primeira com pelo menos 4 dias no ano novo, então alguns dias do início de janeiro pertencem à última semana do ano anterior. Exemplo: 02/01/2027 fica em `2026/semana_53.json`; o domingo 03/01/2027 abre `2027/semana_01.json`.
+- Ao atualizar de uma versão com semanas de segunda a domingo, o app reorganiza os arquivos **uma única vez**, guardando antes uma cópia em `_backups/antes_semana_domingo_<data>/`.
 - A pasta `dados/` está no `.gitignore`: seus registros pessoais **não vão para o GitHub**.
 
 ### Segurança dos dados
@@ -86,10 +88,10 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
 
 ```json
 {
-  "versao_schema": 3,
+  "versao_schema": 4,
   "ano": 2026,
   "semana": 45,
-  "periodo": { "inicio": "2026-11-02", "fim": "2026-11-08" },
+  "periodo": { "inicio": "2026-11-01", "fim": "2026-11-07" },
   "dias": [
     {
       "data": "2026-11-02",
@@ -115,9 +117,10 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
         "jogou": true,
         "horario_inicio": "19:30",
         "horario_fim": "23:00",
+        "ranking_inicio": { "elo": "Ouro 2", "rr": 85 },
         "partidas": [
-          { "agente": "Jett", "resultado": "vitoria", "abates": 20, "mortes": 15, "assistencias": 5, "hs_pct": 30.0, "acs": 260 },
-          { "agente": "Raze", "resultado": "derrota", "abates": 14, "mortes": 16, "assistencias": 6, "hs_pct": 22.0, "acs": 190 }
+          { "agente": "Jett", "resultado": "vitoria", "abates": 20, "mortes": 15, "assistencias": 5, "hs_pct": 30.0, "acs": 260, "rr": 21 },
+          { "agente": "Raze", "resultado": "derrota", "abates": 14, "mortes": 16, "assistencias": 6, "hs_pct": 22.0, "acs": 190, "rr": -16 }
         ],
         "avaliacao": { "mira": 9, "movimentacao": 8, "tomada_decisao": 7, "concentracao": 8, "consistencia": 7 },
         "notas": "Consegui fazer microajustes com facilidade.",
@@ -125,8 +128,9 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
         "resumo": {
           "partidas": 2, "vitorias": 1, "derrotas": 1, "empates": 0,
           "abates": 34, "mortes": 31, "assistencias": 11, "hs_pct": 26.0, "acs": 225.0,
-          "agentes": { "Jett": 1, "Raze": 1 }, "partidas_com_resultado": 2,
-          "kd": 1.1, "kda": 1.45, "kda_texto": "34/31/11", "winrate_pct": 50.0
+          "agentes": { "Jett": 1, "Raze": 1 }, "partidas_com_resultado": 2, "rr": 5,
+          "kd": 1.1, "kda": 1.45, "kda_texto": "34/31/11", "winrate_pct": 50.0,
+          "ranking_final": { "elo": "Ouro 2", "rr": 90 }
         }
       },
       "criado_em": "2026-11-02T23:40:02",
@@ -149,6 +153,7 @@ O campo `versao_schema` indica o formato do arquivo. Quando o formato muda, o ap
 | 1 | Formato inicial |
 | 2 | Refeições ganham `realizada`; `agentes` passa de lista de nomes para `{nome, partidas}` |
 | 3 | Valorant registrado **por partida**; totais antigos do dia vão para `legado`; ADR sai das análises |
+| 4 | Ranking do dia (`ranking_inicio`) e RR por partida; semanas passam a ir de **domingo a sábado** |
 
 ## Imagens dos agentes
 
@@ -167,6 +172,13 @@ python scripts/gerar_agentes.py
 > ValDiary não é endossado pela Riot Games e não reflete as opiniões da Riot Games nem de ninguém oficialmente envolvido na produção ou gestão de propriedades da Riot Games. Riot Games e todas as propriedades associadas são marcas registradas da Riot Games, Inc.
 
 ---
+
+## Ranking
+
+- Na aba **Partidas**, informe o **elo e o RR no início do dia**. Num registro novo, eles já vêm preenchidos com o ranking final do último dia registrado.
+- Em cada partida, informe o **RR ganho ou perdido** (ex.: `+18`, `-14`).
+- O app soma o RR do dia e **estima** o ranking final: cada divisão vai de 0 a 100 RR; passar de 100 promove, ficar abaixo de 0 rebaixa. No Imortal e no Radiante o RR acumula sem teto.
+- É uma estimativa: o jogo tem regras próprias (ex.: proteção contra rebaixamento). Se o ranking real for diferente, corrija o ranking inicial do dia seguinte.
 
 ## Como a comparação funciona
 

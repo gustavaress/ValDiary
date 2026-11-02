@@ -1,25 +1,16 @@
-"""Regras de organização dos arquivos por semana ISO.
+"""Organização dos arquivos por semana (domingo a sábado).
 
-Semana ISO: começa na segunda-feira; a semana 1 é a que contém a primeira
-quinta-feira do ano. Por isso alguns dias do início de janeiro pertencem ao
-ano ISO anterior (ex.: 01/01/2027 -> semana 53 de 2026).
+A regra de qual semana é cada data fica em app/models/datas.py. Alguns dias
+do início de janeiro pertencem à última semana do ano anterior
+(ex.: 01/01/2027 -> semana 53 de 2026).
 """
 
 import re
-from datetime import date
 from pathlib import Path
 
+from app.models.datas import periodo_semana, semana_da_data  # noqa: F401 (reexportados)
+
 _NOME_ARQUIVO = re.compile(r"^semana_(\d{2})\.json$")
-
-
-def semana_da_data(data: date) -> tuple[int, int]:
-    ano, semana, _ = data.isocalendar()
-    return ano, semana
-
-
-def periodo_semana(ano: int, semana: int) -> tuple[date, date]:
-    """(segunda-feira, domingo) da semana ISO."""
-    return date.fromisocalendar(ano, semana, 1), date.fromisocalendar(ano, semana, 7)
 
 
 def caminho_semana(pasta_dados: Path, ano: int, semana: int) -> Path:

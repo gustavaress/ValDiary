@@ -90,7 +90,7 @@ class TelaImportExport(TelaBase):
         self._caixas = {}
 
         registros, _ = self.repositorio.carregar_todos()
-        dias_por_semana = Counter(r.semana_iso for r in registros)
+        dias_por_semana = Counter(r.semana for r in registros)
         semanas = self.repositorio.listar_semanas()
         if not semanas:
             ctk.CTkLabel(self._lista_semanas, text="Nenhuma semana registrada ainda.",

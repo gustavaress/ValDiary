@@ -56,6 +56,7 @@ def registros_para_dataframe(registros: list[RegistroDia]) -> pd.DataFrame:
             "kda": resumo.kda,
             "acs": resumo.acs,
             "hs_pct": resumo.hs_pct,
+            "rr": resumo.rr,
             "mira": avaliacao.mira,
             "movimentacao": avaliacao.movimentacao,
             "tomada_decisao": avaliacao.tomada_decisao,

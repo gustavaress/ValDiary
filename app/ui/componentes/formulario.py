@@ -76,6 +76,31 @@ class CampoHorario(ctk.CTkFrame):
         self.seletor.habilitar(ativo)
 
 
+class CampoOpcao(ctk.CTkFrame):
+    """Menu de opções fixas. get() devolve a opção escolhida ou None ("--")."""
+
+    VAZIO = "--"
+
+    def __init__(self, master, rotulo: str, opcoes: list[str], largura: int = 160, ao_mudar=None):
+        super().__init__(master, fg_color="transparent")
+        self._ao_mudar = ao_mudar
+        _rotulo(self, rotulo).pack(anchor="w")
+        self.menu = ctk.CTkOptionMenu(
+            self, values=[self.VAZIO, *opcoes], width=largura, height=34, dynamic_resizing=False,
+            font=tema.fonte_normal(), fg_color=tema.COR_FUNDO, button_color=tema.COR_FUNDO,
+            button_hover_color=tema.COR_BORDA, dropdown_fg_color=tema.COR_CARTAO, text_color=tema.COR_TEXTO,
+            command=lambda _: ao_mudar() if ao_mudar else None,
+        )
+        self.menu.pack(anchor="w")
+
+    def get(self) -> str | None:
+        valor = self.menu.get()
+        return None if valor == self.VAZIO else valor
+
+    def set(self, valor: str | None) -> None:
+        self.menu.set(valor or self.VAZIO)
+
+
 class CampoMarcacao(ctk.CTkFrame):
     """Caixa de marcação com get() -> bool, no mesmo padrão dos outros campos.
 

@@ -122,7 +122,7 @@ class RepositorioDiario:
         """
         por_semana: dict[tuple[int, int], list[RegistroDia]] = {}
         for registro in registros:
-            por_semana.setdefault(registro.semana_iso, []).append(registro)
+            por_semana.setdefault(registro.semana, []).append(registro)
 
         agora = datetime.now().replace(microsecond=0)
         a_gravar: dict[tuple[int, int], list[RegistroDia]] = {}

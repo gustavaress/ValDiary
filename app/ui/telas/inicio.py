@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 import customtkinter as ctk
 
-from app.analysis.resumo import resumir, sequencia_atual
+from app.analysis.resumo import ranking_mais_recente, resumir, sequencia_atual
 from app.storage.semanas import periodo_semana, semana_da_data
 from app.ui import tema
 from app.ui.componentes import CartaoInfo
@@ -37,8 +37,8 @@ class TelaInicio(TelaBase):
         self._hoje = CartaoInfo(area, "Hoje")
         self._semana = CartaoInfo(area, "Esta semana")
         self._sequencia = CartaoInfo(area, "Sequência")
-        self._total = CartaoInfo(area, "Total registrado")
-        for coluna, cartao in enumerate((self._hoje, self._semana, self._sequencia, self._total)):
+        self._ranking = CartaoInfo(area, "Ranking atual")
+        for coluna, cartao in enumerate((self._hoje, self._semana, self._sequencia, self._ranking)):
             cartao.grid(row=0, column=coluna, sticky="nsew", padx=6, pady=6)
 
         self._botao = ctk.CTkButton(
@@ -94,22 +94,30 @@ class TelaInicio(TelaBase):
             self._botao.configure(text="Editar o registro de hoje")
 
         ano, semana = semana_da_data(hoje)
-        dias_semana = sum(1 for r in registros if r.semana_iso == (ano, semana))
-        self._semana.atualizar(f"{dias_semana}/7", f"dias registrados na semana {semana}")
+        da_semana = [r for r in registros if r.semana == (ano, semana)]
+        self._semana.atualizar(f"{len(da_semana)}/7",
+                               f"semana {semana}  ·  {len(registros)} no total")
 
         sequencia = sequencia_atual(registros, hoje)
         self._sequencia.atualizar(f"{sequencia} dia{'s' if sequencia != 1 else ''}",
                                   "registrando sem falhar")
 
-        semanas = len(self.repositorio.listar_semanas())
-        self._total.atualizar(str(len(registros)),
-                              f"dias em {semanas} semana{'s' if semanas != 1 else ''}")
+        atual = ranking_mais_recente(registros)
+        if atual is None:
+            self._ranking.atualizar("—", "registre seu elo na aba Partidas")
+        else:
+            ranking, _ = atual
+            rr_semana = resumir(da_semana).rr
+            detalhe = f"{ranking.rr} RR"
+            if rr_semana is not None:
+                detalhe += f"  ·  {rr_semana:+d} RR nesta semana"
+            self._ranking.atualizar(ranking.elo, detalhe)
 
     def _atualizar_semana(self, registros, hoje: date) -> None:
         semana_atual = semana_da_data(hoje)
         semana_passada = semana_da_data(hoje - timedelta(days=7))
-        atual = resumir([r for r in registros if r.semana_iso == semana_atual])
-        anterior = resumir([r for r in registros if r.semana_iso == semana_passada])
+        atual = resumir([r for r in registros if r.semana == semana_atual])
+        anterior = resumir([r for r in registros if r.semana == semana_passada])
 
         inicio, fim = periodo_semana(*semana_atual)
         self._titulo_semana.configure(

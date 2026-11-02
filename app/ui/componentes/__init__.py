@@ -4,6 +4,7 @@ from app.ui.componentes.formulario import (
     CampoHorario,
     CampoMarcacao,
     CampoNota,
+    CampoOpcao,
     CampoTextoLongo,
     Secao,
 )
@@ -15,6 +16,7 @@ from app.ui.componentes.tabela import Tabela
 __all__ = [
     "CampoHorario",
     "CampoMarcacao",
+    "CampoOpcao",
     "ListaPartidas",
     "Tabela",
     "CampoEntrada",

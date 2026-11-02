@@ -33,7 +33,7 @@ def test_cria_arquivo_da_semana_automaticamente(repo):
     assert arquivo.exists()
     conteudo = json.loads(arquivo.read_text(encoding="utf-8"))
     assert conteudo["semana"] == 45
-    assert conteudo["periodo"] == {"inicio": "2026-11-02", "fim": "2026-11-08"}
+    assert conteudo["periodo"] == {"inicio": "2026-11-01", "fim": "2026-11-07"}  # domingo a sábado
     assert conteudo["versao_schema"] == config.VERSAO_SCHEMA
 
 

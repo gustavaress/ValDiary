@@ -12,7 +12,7 @@ CORES_RESULTADO = {"vitoria": tema.COR_SUCESSO, "derrota": tema.COR_DESTAQUE, "e
 
 # (chave, rótulo, largura)
 ESTATISTICAS = [("abates", "K", 58), ("mortes", "D", 58), ("assistencias", "A", 58),
-                ("hs_pct", "HS%", 66), ("acs", "ACS", 66)]
+                ("hs_pct", "HS%", 66), ("acs", "ACS", 66), ("rr", "RR ±", 66)]
 
 
 class CartaoPartida(ctk.CTkFrame):
