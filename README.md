@@ -144,10 +144,16 @@ O campo `versao_schema` indica o formato do arquivo. Quando o formato muda, o ap
 
 ## Imagens dos agentes
 
-Os ícones ficam em `assets/agentes/` e são baixados da [valorant-api.com](https://valorant-api.com) (API pública da comunidade). O app **não acessa a internet**: só lê essa pasta. Quando um agente novo for lançado:
+O app usa miniaturas de 128 px em `assets/agentes/`, geradas a partir das imagens originais em `assets/agentes/originais/` (arquivos `<Nome>_icon.png`). Os originais são grandes e ficam **fora do Git**; só as miniaturas e o catálogo `agentes.json` são versionados.
+
+Para adicionar um agente novo ou trocar uma imagem:
+
+1. Coloque o arquivo em `assets/agentes/originais/` (ex.: `NovoAgente_icon.png`).
+2. Inclua a função dele no dicionário `FUNCOES` de `scripts/gerar_agentes.py`.
+3. Rode:
 
 ```powershell
-python scripts/baixar_agentes.py
+python scripts/gerar_agentes.py
 ```
 
 > ValDiary não é endossado pela Riot Games e não reflete as opiniões da Riot Games nem de ninguém oficialmente envolvido na produção ou gestão de propriedades da Riot Games. Riot Games e todas as propriedades associadas são marcas registradas da Riot Games, Inc.
@@ -181,7 +187,7 @@ app/
 └── ui/                  interface CustomTkinter
     ├── componentes/     widgets reutilizáveis (seletor de nota, listas...)
     └── telas/           uma tela por arquivo
-assets/agentes/          ícones dos agentes + catálogo (gerados por scripts/baixar_agentes.py)
+assets/agentes/          miniaturas dos agentes + catálogo (gerados por scripts/gerar_agentes.py)
 scripts/                 utilitários de desenvolvimento
 tests/                   testes automáticos (pytest)
 ```

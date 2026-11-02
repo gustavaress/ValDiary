@@ -8,3 +8,6 @@ dist/
 
 # Dados pessoais: ficam fora do Git por padrão.
 dados/
+
+# Imagens originais dos agentes (grandes): só as miniaturas geradas vão para o Git.
+assets/agentes/originais/
