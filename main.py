@@ -2,20 +2,15 @@
 
 import customtkinter as ctk
 
-from app.config import NOME_APP, garantir_pastas
+from app.config import garantir_pastas
+from app.storage import RepositorioDiario
+from app.ui.janela_principal import JanelaPrincipal
 
 
 def main() -> None:
     garantir_pastas()
-
     ctk.set_appearance_mode("dark")
-    janela = ctk.CTk()
-    janela.title(NOME_APP)
-    janela.geometry("1100x700")
-
-    # Placeholder até a Etapa 3 (esqueleto da interface).
-    ctk.CTkLabel(janela, text=NOME_APP, font=ctk.CTkFont(size=24, weight="bold")).pack(expand=True)
-
+    janela = JanelaPrincipal(RepositorioDiario())
     janela.mainloop()
 
 
