@@ -31,7 +31,30 @@ def _v1_para_v2(documento: dict) -> dict:
     return documento
 
 
-_MIGRACOES = {1: _v1_para_v2}
+_CAMPOS_DIA_V2 = ("partidas", "vitorias", "derrotas", "empates", "abates", "mortes", "assistencias",
+                  "acs", "adr", "hs_pct", "agentes")
+
+
+def _v2_para_v3(documento: dict) -> dict:
+    """v3: o Valorant passa a ser registrado por partida.
+
+    Os totais do dia da v2 não viram partidas (seria inventar dados): vão
+    intactos para "legado" e continuam aparecendo nas análises.
+    """
+    for dia in documento.get("dias") or []:
+        if not isinstance(dia, dict) or not isinstance(dia.get("valorant"), dict):
+            continue
+        jogo = dia["valorant"]
+        jogo.pop("derivados", None)
+        legado = {campo: jogo.pop(campo) for campo in _CAMPOS_DIA_V2 if campo in jogo}
+        tem_dados = any(v not in (None, []) for v in legado.values())
+        jogo["legado"] = legado if tem_dados else None
+        jogo["partidas"] = []
+    documento["versao_schema"] = 3
+    return documento
+
+
+_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3}
 
 
 def migrar_documento(documento: dict) -> dict:

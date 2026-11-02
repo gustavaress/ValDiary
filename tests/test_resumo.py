@@ -6,8 +6,9 @@ from app.models import Classificacao, RegistroDia
 
 def _dia(dia, partidas=None, vitorias=None, abates=None, mortes=None, acs=None, classificacao=None):
     r = RegistroDia(data=date(2026, 11, dia), classificacao=classificacao)
-    v = r.valorant
-    v.partidas, v.vitorias, v.abates, v.mortes, v.acs = partidas, vitorias, abates, mortes, acs
+    # Totais do dia (formato legado): mantém os testes simples e cobre esse caminho.
+    r.valorant.legado = {"partidas": partidas, "vitorias": vitorias, "abates": abates,
+                         "mortes": mortes, "acs": acs}
     return r
 
 

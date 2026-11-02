@@ -4,7 +4,7 @@ import pandas as pd
 
 from app.analysis.dataframe import filtrar_periodo, hora_decimal, registros_para_dataframe
 from app.analysis.metricas import METRICAS
-from app.models import Bebida, Classificacao, RegistroDia
+from app.models import Bebida, Classificacao, Partida, RegistroDia
 
 
 def test_hora_decimal():
@@ -23,7 +23,7 @@ def test_media_de_horario_noturno_faz_sentido():
 
 def test_dataframe_tem_todas_as_metricas_e_nan_para_vazios():
     r1 = RegistroDia(data=date(2026, 11, 3), classificacao=Classificacao.BOM)
-    r1.valorant.abates, r1.valorant.mortes = 30, 20
+    r1.valorant.partidas = [Partida(abates=30, mortes=20)]
     r1.rotina.bebidas = [Bebida("café"), Bebida("energético")]
     r2 = RegistroDia(data=date(2026, 11, 2))
 

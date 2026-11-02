@@ -120,7 +120,7 @@ class JanelaPrincipal(ctk.CTk):
     def abrir_registro(self, data: date) -> None:
         """Abre a tela de registro já na data indicada."""
         self.mostrar_tela("registro")
-        self._telas["registro"].abrir_data(data)
+        self._telas["registro"].abrir_registro(data)
 
     def _ao_fechar(self) -> None:
         # Garante que o que foi digitado e ainda não salvo vire rascunho.

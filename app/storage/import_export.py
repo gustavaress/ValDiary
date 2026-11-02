@@ -25,10 +25,11 @@ LEGENDA = {
                "Exceção: 'estresse', em que 10 = muito estressado.",
     "classificacao": "Avaliação subjetiva do próprio jogador sobre o dia: "
                      "excelente, bom, normal, ruim ou pessimo.",
-    "valorant": "abates, mortes e assistencias são TOTAIS somados de todas as partidas do dia. "
-                "acs, adr e hs_pct são MÉDIAS por partida. 'derivados' (kd, kda, winrate) é "
-                "calculado automaticamente a partir desses valores. 'agentes' lista cada agente "
-                "jogado no dia e em quantas partidas.",
+    "valorant": "'partidas' lista cada partida do dia (agente, resultado, abates, mortes, "
+                "assistencias, hs_pct e acs). 'resumo' é CALCULADO a partir delas: abates, mortes e "
+                "assistencias são totais do dia; hs_pct e acs são médias por partida; 'agentes' conta "
+                "em quantas partidas cada agente foi jogado. Dias antigos podem ter só 'legado' "
+                "(totais do dia digitados antes do registro por partida), sem a lista de partidas.",
     "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",

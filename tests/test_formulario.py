@@ -2,13 +2,13 @@ from datetime import date
 
 import pytest
 
-from app.models import AgenteJogado, Bebida, Classificacao, Medicamento, RegistroDia, validar_registro
+from app.models import Bebida, Classificacao, Medicamento, Partida, RegistroDia
 from app.ui import conversao
 from app.ui.conversao import ErroConversao
 from app.ui.mapeamento_registro import (
-    derivados_ao_vivo,
     formulario_para_registro,
     registro_para_formulario,
+    resumo_ao_vivo,
 )
 
 
@@ -47,16 +47,10 @@ def _registro() -> RegistroDia:
     r.rotina.observacoes = "Dia tranquilo"
     r.valorant.jogou = True
     r.valorant.horario_inicio = "19:00"
-    r.valorant.partidas = 4
-    r.valorant.vitorias = 3
-    r.valorant.derrotas = 1
-    r.valorant.abates = 70
-    r.valorant.mortes = 50
-    r.valorant.assistencias = 18
-    r.valorant.acs = 240.5
-    r.valorant.adr = 150
-    r.valorant.hs_pct = 27.3
-    r.valorant.agentes = [AgenteJogado("Jett", 3), AgenteJogado("Raze", 1)]
+    r.valorant.partidas = [
+        Partida("Jett", "vitoria", 22, 14, 6, 27.3, 260.5),
+        Partida("Raze", "derrota", 13, 16, 3, 21.0, 180),
+    ]
     r.valorant.avaliacao.mira = 9
     r.valorant.notas = "Microajustes fáceis"
     return r
@@ -90,7 +84,7 @@ def test_formulario_vazio_gera_registro_vazio():
 def test_erros_sao_acumulados():
     formulario = registro_para_formulario(_registro())
     formulario["sono_dormiu_as"] = "99:99"
-    formulario["partidas"] = "quatro"
+    formulario["partidas"][0]["abates"] = "quatro"
     formulario["agua_litros"] = "muito"
     registro, erros = formulario_para_registro(formulario)
     assert registro is None
@@ -104,19 +98,41 @@ def test_linhas_vazias_de_lista_sao_ignoradas():
     assert len(registro.rotina.bebidas) == 1
 
 
-def test_jogou_e_inferido_quando_ha_estatisticas():
+def _partida_form(**valores) -> dict:
+    base = {"agente": "", "resultado": None, "abates": "", "mortes": "", "assistencias": "",
+            "hs_pct": "", "acs": ""}
+    return base | valores
+
+
+def test_jogou_e_inferido_quando_ha_partidas():
     formulario = registro_para_formulario(RegistroDia(data=date(2026, 11, 2)))
-    formulario["abates"] = "20"
+    formulario["partidas"] = [_partida_form(abates="20")]
     registro, _ = formulario_para_registro(formulario)
     assert registro.valorant.jogou is True
 
 
-def test_derivados_ao_vivo_ignoram_valores_invalidos():
+def test_cartao_de_partida_em_branco_e_ignorado():
     formulario = registro_para_formulario(_registro())
-    formulario["assistencias"] = "abc"
-    jogo = derivados_ao_vivo(formulario)
-    assert jogo.kd == 1.4
-    assert jogo.kda == 1.4  # assistências inválidas contam como 0
+    formulario["partidas"].append(_partida_form())
+    registro, erros = formulario_para_registro(formulario)
+    assert erros == [] and len(registro.valorant.partidas) == 2
+
+
+def test_resumo_ao_vivo_ignora_valores_invalidos():
+    formulario = registro_para_formulario(_registro())
+    formulario["partidas"][1]["assistencias"] = "abc"
+    resumo = resumo_ao_vivo(formulario)
+    assert resumo.partidas == 2
+    assert resumo.kda_texto == "35/30/6"  # assistência inválida não soma
+
+
+def test_legado_atravessa_o_formulario():
+    r = RegistroDia(data=date(2026, 11, 2))
+    r.valorant.legado = {"partidas": 3, "abates": 40, "mortes": 30, "adr": 140}
+    formulario = registro_para_formulario(r)
+    assert resumo_ao_vivo(formulario).partidas == 3
+    registro, _ = formulario_para_registro(formulario)
+    assert registro.valorant.legado == r.valorant.legado  # nada se perde ao salvar
 
 
 def test_refeicao_desmarcada_ignora_os_campos():
@@ -133,18 +149,3 @@ def test_refeicao_marcada_sem_detalhes():
     formulario["cafe_realizada"] = True
     registro, _ = formulario_para_registro(formulario)
     assert registro.rotina.alimentacao.cafe_da_manha.realizada is True
-
-
-def test_total_de_partidas_vazio_usa_soma_dos_agentes():
-    formulario = registro_para_formulario(RegistroDia(data=date(2026, 11, 2)))
-    formulario["agentes"] = [{"nome": "Jett", "partidas": "2"}, {"nome": "Omen", "partidas": "1"}]
-    registro, _ = formulario_para_registro(formulario)
-    assert registro.valorant.partidas == 3
-    assert registro.valorant.nomes_agentes == ["Jett", "Omen"]
-
-
-def test_soma_dos_agentes_maior_que_total_e_erro():
-    r = _registro()  # 4 partidas no total
-    r.valorant.agentes = [AgenteJogado("Jett", 3), AgenteJogado("Raze", 2)]
-    erros = validar_registro(r)
-    assert any("soma das partidas por agente" in e for e in erros)

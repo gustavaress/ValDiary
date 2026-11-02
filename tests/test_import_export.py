@@ -3,7 +3,7 @@ from datetime import date
 
 import pytest
 
-from app.models import Classificacao, RegistroDia
+from app.models import Classificacao, Partida, RegistroDia
 from app.storage import RepositorioDiario
 from app.storage.import_export import (
     ErroImportacao,
@@ -21,7 +21,7 @@ def _repo(pasta) -> RepositorioDiario:
 
 def _dia(dia: int, abates=None, classificacao=None) -> RegistroDia:
     r = RegistroDia(data=date(2026, 11, dia), classificacao=classificacao)
-    r.valorant.abates = abates
+    r.valorant.partidas = [Partida(abates=abates)] if abates is not None else []
     return r
 
 
@@ -56,7 +56,7 @@ def test_exportar_e_importar_em_repositorio_vazio(origem, tmp_path):
     assert aplicar_importacao(destino, plano, substituir_conflitos=False) == 3
 
     registros, _ = destino.carregar_todos()
-    assert [r.valorant.abates for r in registros] == [20, 30, 100]
+    assert [r.valorant.resumo.abates for r in registros] == [20, 30, 100]
 
 
 def test_importar_de_novo_nao_duplica(origem, tmp_path):
@@ -74,12 +74,12 @@ def test_conflitos_respeitam_a_escolha(origem, tmp_path):
     assert len(plano.conflitos) == 1 and len(plano.novos) == 1
 
     aplicar_importacao(destino, plano, substituir_conflitos=False)
-    assert destino.obter_dia(date(2026, 11, 2)).valorant.abates == 999  # manteve o seu
+    assert destino.obter_dia(date(2026, 11, 2)).valorant.resumo.abates == 999  # manteve o seu
     assert destino.obter_dia(date(2026, 11, 3)) is not None
 
     plano = planejar_importacao(destino, ler_arquivo(arquivo))
     aplicar_importacao(destino, plano, substituir_conflitos=True)
-    assert destino.obter_dia(date(2026, 11, 2)).valorant.abates == 20   # substituiu
+    assert destino.obter_dia(date(2026, 11, 2)).valorant.resumo.abates == 20   # substituiu
 
 
 def test_importa_arquivo_semanal_cru(origem):

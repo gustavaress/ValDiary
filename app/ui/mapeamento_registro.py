@@ -12,13 +12,15 @@ Este módulo não depende da interface, por isso pode ser testado sozinho.
 from datetime import date
 
 from app.models import (
-    AgenteJogado,
     Bebida,
     Classificacao,
     Medicamento,
+    Partida,
     RegistroDia,
+    ResumoJogo,
     Valorant,
     calcular_horas_sono,
+    resumir_partidas,
 )
 from app.ui import conversao
 from app.ui.conversao import ErroConversao, para_campo
@@ -65,17 +67,14 @@ def registro_para_formulario(registro: RegistroDia) -> dict:
         "jogou": {True: "sim", False: "nao"}.get(jogo.jogou),
         "jogo_inicio": jogo.horario_inicio or "",
         "jogo_fim": jogo.horario_fim or "",
-        "partidas": para_campo(jogo.partidas),
-        "vitorias": para_campo(jogo.vitorias),
-        "derrotas": para_campo(jogo.derrotas),
-        "empates": para_campo(jogo.empates),
-        "abates": para_campo(jogo.abates),
-        "mortes": para_campo(jogo.mortes),
-        "assistencias": para_campo(jogo.assistencias),
-        "acs": para_campo(jogo.acs),
-        "adr": para_campo(jogo.adr),
-        "hs_pct": para_campo(jogo.hs_pct),
-        "agentes": [{"nome": a.nome, "partidas": para_campo(a.partidas)} for a in jogo.agentes],
+        "partidas": [
+            {"agente": p.agente or "", "resultado": p.resultado, "abates": para_campo(p.abates),
+             "mortes": para_campo(p.mortes), "assistencias": para_campo(p.assistencias),
+             "hs_pct": para_campo(p.hs_pct), "acs": para_campo(p.acs)}
+            for p in jogo.partidas
+        ],
+        # Não tem campo na tela: só atravessa o formulário para não se perder ao salvar.
+        "legado": jogo.legado,
         "notas_jogo": jogo.notas or "",
     }
     for chave, atributo, _ in _REFEICOES:
@@ -119,6 +118,9 @@ class _Leitor:
 
     def inteiro_valor(self, valor: str, rotulo: str) -> int | None:
         return self._converter(conversao.inteiro, valor, rotulo)
+
+    def decimal_valor(self, valor: str, rotulo: str) -> float | None:
+        return self._converter(conversao.decimal, valor, rotulo)
 
 
 def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list[str]]:
@@ -174,31 +176,14 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     jogo.jogou = {"sim": True, "nao": False}.get(formulario.get("jogou"))
     jogo.horario_inicio = ler.hora("jogo_inicio", "Início do jogo")
     jogo.horario_fim = ler.hora("jogo_fim", "Fim do jogo")
-    jogo.partidas = ler.inteiro("partidas", "Partidas")
-    jogo.vitorias = ler.inteiro("vitorias", "Vitórias")
-    jogo.derrotas = ler.inteiro("derrotas", "Derrotas")
-    jogo.empates = ler.inteiro("empates", "Empates")
-    jogo.abates = ler.inteiro("abates", "Abates")
-    jogo.mortes = ler.inteiro("mortes", "Mortes")
-    jogo.assistencias = ler.inteiro("assistencias", "Assistências")
-    jogo.acs = ler.decimal("acs", "ACS")
-    jogo.adr = ler.decimal("adr", "ADR")
-    jogo.hs_pct = ler.decimal("hs_pct", "HS%")
-    jogo.agentes = [
-        AgenteJogado(nome=a["nome"], partidas=ler.inteiro_valor(a.get("partidas"), f"Partidas com {a['nome']}"))
-        for a in formulario.get("agentes") or []
-    ]
-    # Total de partidas vazio: usamos a soma das partidas por agente.
-    soma_agentes = sum(a.partidas or 0 for a in jogo.agentes)
-    if jogo.partidas is None and soma_agentes:
-        jogo.partidas = soma_agentes
+    jogo.partidas = _ler_partidas(formulario.get("partidas") or [], ler)
+    jogo.legado = formulario.get("legado")
     for nota in _NOTAS_AVALIACAO:
         setattr(jogo.avaliacao, nota, formulario.get(nota))
     jogo.notas = ler.texto("notas_jogo")
 
-    # Se preencheu estatísticas mas não marcou "jogou", é óbvio que jogou.
-    estatisticas = (jogo.partidas, jogo.abates, jogo.acs, jogo.adr, jogo.hs_pct)
-    if jogo.jogou is None and any(v is not None for v in estatisticas):
+    # Registrou partidas mas não marcou "jogou": é óbvio que jogou.
+    if jogo.jogou is None and jogo.partidas:
         jogo.jogou = True
 
     if ler.erros:
@@ -206,21 +191,31 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     return registro, []
 
 
-def derivados_ao_vivo(formulario: dict) -> Valorant:
-    """Valorant só com os campos usados nos cálculos de K/D, KDA e winrate.
+def _partida_vazia(dados: dict) -> bool:
+    return not any(conversao.texto(v) if isinstance(v, str) else v for v in dados.values())
 
-    Valores inválidos são ignorados (é só uma prévia enquanto o usuário digita).
-    """
-    def seguro(chave):
-        try:
-            return conversao.inteiro(formulario.get(chave), chave)
-        except ErroConversao:
-            return None
 
-    return Valorant(
-        partidas=seguro("partidas"),
-        vitorias=seguro("vitorias"),
-        abates=seguro("abates"),
-        mortes=seguro("mortes"),
-        assistencias=seguro("assistencias"),
-    )
+def _ler_partidas(lista: list[dict], ler: _Leitor) -> list[Partida]:
+    partidas = []
+    for dados in lista:
+        if _partida_vazia(dados):  # cartão adicionado e deixado em branco
+            continue
+        rotulo = f"Partida {len(partidas) + 1}"
+        partidas.append(Partida(
+            agente=conversao.texto(dados.get("agente")),
+            resultado=dados.get("resultado"),
+            abates=ler.inteiro_valor(dados.get("abates"), f"{rotulo} (abates)"),
+            mortes=ler.inteiro_valor(dados.get("mortes"), f"{rotulo} (mortes)"),
+            assistencias=ler.inteiro_valor(dados.get("assistencias"), f"{rotulo} (assistências)"),
+            hs_pct=ler.decimal_valor(dados.get("hs_pct"), f"{rotulo} (HS%)"),
+            acs=ler.decimal_valor(dados.get("acs"), f"{rotulo} (ACS)"),
+        ))
+    return partidas
+
+
+def resumo_ao_vivo(formulario: dict) -> ResumoJogo:
+    """Resumo do dia enquanto o usuário digita (valores inválidos são ignorados)."""
+    partidas = _ler_partidas(formulario.get("partidas") or [], _Leitor(formulario))
+    if partidas:
+        return resumir_partidas(partidas)
+    return Valorant(legado=formulario.get("legado")).resumo

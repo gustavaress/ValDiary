@@ -1,4 +1,11 @@
-"""Tela de registro diário: criar e editar o registro de uma data."""
+"""Tela de registro diário: criar um registro novo ou editar um existente.
+
+Dois modos:
+- NOVO: a data é só "a que dia este registro pertence". Trocá-la mantém o que
+  foi preenchido, mas só são aceitos dias sem registro e que não estão no futuro.
+- EDIÇÃO: aberto pelo Histórico ou por "Editar o registro de hoje". A data fica
+  travada; "+ Novo registro" volta ao modo novo.
+"""
 
 from datetime import date, datetime, timedelta
 from tkinter import messagebox
@@ -6,8 +13,8 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.models import RegistroDia, calcular_horas_sono, validar_registro
+from app.models.datas import data_livre_mais_recente, erro_data_nova, proxima_data_livre
 from app.storage import ArquivoCorrompidoError, RegistroDuplicadoError, VersaoIncompativelError
-from app.storage.catalogo_agentes import carregar_agentes
 from app.storage.rascunho import apagar_rascunho, salvar_rascunho
 from app.ui import conversao, tema
 from app.ui.componentes import (
@@ -17,22 +24,28 @@ from app.ui.componentes import (
     CampoNota,
     CampoTextoLongo,
     ListaEditavel,
+    ListaPartidas,
     Secao,
-    SeletorAgentes,
     SeletorBotoes,
     SeletorClassificacao,
 )
 from app.ui.componentes.lista_editavel import HORA, TEXTO
 from app.ui.formatacao import data_curta, data_extensa, numero
 from app.ui.mapeamento_registro import (
-    derivados_ao_vivo,
     formulario_para_registro,
     registro_para_formulario,
+    resumo_ao_vivo,
 )
 from app.ui.telas.base import TelaBase
 
 INTERVALO_AUTOSAVE_MS = 3000
 REFEICOES = (("cafe", "Café da manhã"), ("almoco", "Almoço"), ("jantar", "Jantar"))
+NOVO, EDICAO = "novo", "edicao"
+
+
+def _sem_data(formulario: dict) -> dict:
+    """Conteúdo do formulário sem a data (trocar a data não é "alterar o registro")."""
+    return {chave: valor for chave, valor in formulario.items() if chave != "data"}
 
 
 class TelaRegistro(TelaBase):
@@ -43,9 +56,11 @@ class TelaRegistro(TelaBase):
         # Cada campo da tela, pela mesma chave usada no dicionário do formulário.
         self._campos: dict = {}
         self._data = date.today()
-        self._editando = False
+        self._modo = NOVO
+        self._legado: dict | None = None  # totais antigos do dia (sem campo na tela)
+        self._registradas: set[date] = set()
         self._carregado = False
-        self._base: dict = {}             # estado do formulário quando foi carregado/salvo
+        self._base: dict = {}             # conteúdo quando foi carregado/salvo
         self._ultimo_rascunho: dict | None = None
 
         self.corpo.grid_columnconfigure(0, weight=1)
@@ -68,6 +83,7 @@ class TelaRegistro(TelaBase):
         self._areas: dict[str, ctk.CTkScrollableFrame] = {}
         for nome, montar in (("Rotina", self._montar_aba_rotina),
                              ("Valorant", self._montar_aba_valorant),
+                             ("Partidas", self._montar_aba_partidas),
                              ("Anotações", self._montar_aba_anotacoes)):
             abas.add(nome)
             area = ctk.CTkScrollableFrame(abas.tab(nome), fg_color="transparent")
@@ -91,16 +107,18 @@ class TelaRegistro(TelaBase):
                                  border_width=1, border_color=tema.COR_BORDA,
                                  text_color=tema.COR_TEXTO, command=comando)
 
-        botao("◀", lambda: self.abrir_data(self._data - timedelta(days=1))).grid(
-            row=0, column=0, padx=(14, 4), pady=14)
+        self._botao_anterior = botao("◀", lambda: self._andar_data(-1))
+        self._botao_anterior.grid(row=0, column=0, padx=(14, 4), pady=14)
         self._entrada_data = ctk.CTkEntry(barra, width=120, height=34, justify="center",
                                           fg_color=tema.COR_FUNDO, border_color=tema.COR_BORDA,
                                           font=tema.fonte_normal())
         self._entrada_data.grid(row=0, column=1, padx=4)
         self._entrada_data.bind("<Return>", lambda _: self._data_digitada())
         self._entrada_data.bind("<FocusOut>", lambda _: self._data_digitada())
-        botao("▶", lambda: self.abrir_data(self._data + timedelta(days=1))).grid(row=0, column=2, padx=4)
-        botao("Hoje", lambda: self.abrir_data(date.today()), largura=60).grid(row=0, column=3, padx=(4, 14))
+        self._botao_proximo = botao("▶", lambda: self._andar_data(+1))
+        self._botao_proximo.grid(row=0, column=2, padx=4)
+        self._botao_hoje = botao("Hoje", lambda: self._mudar_data(date.today()), largura=60)
+        self._botao_hoje.grid(row=0, column=3, padx=(4, 14))
 
         textos = ctk.CTkFrame(barra, fg_color="transparent")
         textos.grid(row=0, column=4, sticky="w")
@@ -113,9 +131,13 @@ class TelaRegistro(TelaBase):
         self._rotulo_status = ctk.CTkLabel(barra, text="", font=tema.fonte_pequena(),
                                            text_color=tema.COR_TEXTO_SECUNDARIO)
         self._rotulo_status.grid(row=0, column=5, sticky="e", padx=12)
-        ctk.CTkButton(barra, text="Salvar", width=120, height=38, font=tema.fonte_secao(),
+        ctk.CTkButton(barra, text="+ Novo registro", width=130, height=38, font=tema.fonte_normal(),
+                      fg_color="transparent", border_width=1, border_color=tema.COR_BORDA,
+                      text_color=tema.COR_TEXTO, hover_color=tema.COR_CARTAO_HOVER,
+                      command=self.novo_registro).grid(row=0, column=6, padx=(0, 8))
+        ctk.CTkButton(barra, text="Salvar", width=110, height=38, font=tema.fonte_secao(),
                       fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-                      command=self.salvar).grid(row=0, column=6, padx=(0, 14))
+                      command=self.salvar).grid(row=0, column=7, padx=(0, 14))
 
     def _montar_classificacao(self) -> None:
         linha = ctk.CTkFrame(self.corpo, fg_color="transparent")
@@ -190,7 +212,7 @@ class TelaRegistro(TelaBase):
         ], colunas=1)
 
     def _montar_aba_valorant(self, area) -> None:
-        secao = Secao(area, "Sessão")
+        secao = Secao(area, "Sessão", "As partidas em si são registradas na aba Partidas.")
         secao.pack(fill="x", pady=(0, 10))
         rotulo = ctk.CTkFrame(secao.conteudo, fg_color="transparent")
         ctk.CTkLabel(rotulo, text="Jogou hoje?", font=tema.fonte_pequena(),
@@ -206,35 +228,6 @@ class TelaRegistro(TelaBase):
         self._campos["jogo_inicio"] = inicio
         self._campos["jogo_fim"] = fim
 
-        secao = Secao(area, "Resultados e estatísticas",
-                      "K/D/A: totais somados do dia. ACS, ADR e HS%: médias por partida.")
-        secao.pack(fill="x", pady=10)
-        campos = [
-            ("partidas", CampoEntrada(secao.conteudo, "Partidas", largura=100)),
-            ("vitorias", CampoEntrada(secao.conteudo, "Vitórias", largura=100)),
-            ("derrotas", CampoEntrada(secao.conteudo, "Derrotas", largura=100)),
-            ("empates", CampoEntrada(secao.conteudo, "Empates", largura=100)),
-            ("abates", CampoEntrada(secao.conteudo, "Abates (K)", largura=100)),
-            ("mortes", CampoEntrada(secao.conteudo, "Mortes (D)", largura=100)),
-            ("assistencias", CampoEntrada(secao.conteudo, "Assistências (A)", largura=100)),
-            ("acs", CampoEntrada(secao.conteudo, "ACS médio", largura=100)),
-            ("adr", CampoEntrada(secao.conteudo, "ADR médio", largura=100)),
-            ("hs_pct", CampoEntrada(secao.conteudo, "HS%", largura=100)),
-        ]
-        self._grade(secao, campos, colunas=4)
-        for chave in ("partidas", "vitorias", "abates", "mortes", "assistencias"):
-            self._campos[chave].ao_digitar(self._atualizar_derivados)
-        self._rotulo_derivados = ctk.CTkLabel(secao.conteudo, text="", font=tema.fonte_secao(),
-                                              text_color=tema.COR_DESTAQUE)
-        self._rotulo_derivados.grid(row=3, column=0, columnspan=4, sticky="w", pady=(10, 0))
-
-        secao = Secao(area, "Agentes jogados",
-                      "Clique nas fotos para marcar os agentes e ajuste quantas partidas jogou com cada um. "
-                      "Se o total de partidas estiver vazio, ele é preenchido com a soma.")
-        secao.pack(fill="x", pady=10)
-        self._campos["agentes"] = SeletorAgentes(secao.conteudo, carregar_agentes())
-        self._campos["agentes"].pack(anchor="w", fill="x")
-
         secao = Secao(area, "Autoavaliação")
         secao.pack(fill="x", pady=10)
         self._grade(secao, [
@@ -244,6 +237,22 @@ class TelaRegistro(TelaBase):
             ("concentracao", CampoNota(secao.conteudo, "Concentração")),
             ("consistencia", CampoNota(secao.conteudo, "Consistência")),
         ], colunas=1)
+
+    def _montar_aba_partidas(self, area) -> None:
+        secao = Secao(area, "Resumo do dia", "Calculado automaticamente a partir das partidas abaixo.")
+        secao.pack(fill="x", pady=(0, 10))
+        self._rotulo_resumo = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
+                                           font=tema.fonte_normal(), text_color=tema.COR_TEXTO)
+        self._rotulo_resumo.pack(anchor="w")
+        self._rotulo_legado = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w", wraplength=760,
+                                           font=tema.fonte_pequena(), text_color=tema.COR_AVISO)
+        self._rotulo_legado.pack(anchor="w", pady=(6, 0))
+
+        secao = Secao(area, "Partidas", "Uma partida por cartão. Clique em \"Escolher agente\" para abrir a "
+                                        "bandeja de agentes.")
+        secao.pack(fill="x", pady=10)
+        self._campos["partidas"] = ListaPartidas(secao.conteudo, ao_mudar=self._atualizar_resumo)
+        self._campos["partidas"].pack(fill="x")
 
     def _montar_aba_anotacoes(self, area) -> None:
         secao = Secao(area, "Situações nas partidas",
@@ -263,16 +272,21 @@ class TelaRegistro(TelaBase):
     def _ler(self) -> dict:
         formulario = {chave: campo.get() for chave, campo in self._campos.items()}
         formulario["data"] = self._data.isoformat()
+        formulario["legado"] = self._legado
         return formulario
 
     def _preencher(self, formulario: dict) -> None:
+        self._legado = formulario.get("legado")
         for chave, campo in self._campos.items():
             campo.set(formulario.get(chave))
         self._atualizar_horas_auto()
-        self._atualizar_derivados()
+        self._atualizar_resumo()
+
+    def _formulario_vazio(self, data: date) -> dict:
+        return registro_para_formulario(RegistroDia(data=data))
 
     def _tem_alteracoes(self) -> bool:
-        return self._carregado and self._ler() != self._base
+        return self._carregado and _sem_data(self._ler()) != self._base
 
     def _atualizar_refeicoes(self) -> None:
         """Habilita horário e descrição só das refeições marcadas."""
@@ -292,70 +306,134 @@ class TelaRegistro(TelaBase):
         texto = f"≈ {numero(horas)} h pelos horários" if horas is not None else ""
         self._rotulo_horas_auto.configure(text=texto)
 
-    def _atualizar_derivados(self) -> None:
-        jogo = derivados_ao_vivo(self._ler())
-        partes = []
-        if jogo.kd is not None:
-            partes += [f"K/D {numero(jogo.kd)}", f"KDA {numero(jogo.kda)}"]
-        if jogo.winrate_pct is not None:
-            partes.append(f"Winrate {numero(jogo.winrate_pct, 1)}%")
-        self._rotulo_derivados.configure(text="   ·   ".join(partes))
+    def _atualizar_resumo(self) -> None:
+        formulario = self._ler()
+        resumo = resumo_ao_vivo(formulario)
+        if not resumo.partidas:
+            self._rotulo_resumo.configure(text="Adicione partidas para ver o resumo do dia.",
+                                          text_color=tema.COR_TEXTO_SECUNDARIO)
+        else:
+            resultados = [f"{n} {letra}" for n, letra in ((resumo.vitorias, "V"), (resumo.derrotas, "D"),
+                                                         (resumo.empates, "E")) if n is not None]
+            linha1 = [f"{resumo.partidas} partida(s)", *resultados]
+            if resumo.winrate_pct is not None:
+                linha1.append(f"Winrate {numero(resumo.winrate_pct, 1)}%")
+            linha2 = []
+            if resumo.kda_texto:
+                linha2 += [f"K/D/A {resumo.kda_texto}", f"K/D {numero(resumo.kd)}", f"KDA {numero(resumo.kda)}"]
+            if resumo.hs_pct is not None:
+                linha2.append(f"HS% médio {numero(resumo.hs_pct, 1)}%")
+            if resumo.acs is not None:
+                linha2.append(f"ACS médio {numero(resumo.acs, 0)}")
+            agentes = "  ·  ".join(f"{nome} ×{n}" if n else nome for nome, n in resumo.agentes.items())
+            linhas = ["  ·  ".join(linha1), "  ·  ".join(linha2), f"Agentes: {agentes}" if agentes else ""]
+            self._rotulo_resumo.configure(text="\n".join(l for l in linhas if l), text_color=tema.COR_TEXTO)
+
+        tem_partidas = any(p.get("agente") or p.get("abates") or p.get("resultado")
+                           for p in formulario.get("partidas") or [])
+        if self._legado and not tem_partidas:
+            self._rotulo_legado.configure(text=(
+                "Este dia foi registrado antes do registro por partida: o resumo acima vem dos totais "
+                "digitados na época. Se você adicionar partidas, elas passam a valer no lugar desses totais."))
+        else:
+            self._rotulo_legado.configure(text="")
 
     def _atualizar_cabecalho(self) -> None:
+        self._entrada_data.configure(state="normal")
         self._entrada_data.delete(0, "end")
         self._entrada_data.insert(0, data_curta(self._data))
         self._rotulo_dia.configure(text=data_extensa(self._data))
-        if self._editando:
-            self._rotulo_modo.configure(text="Editando registro existente", text_color=tema.COR_AVISO)
+
+        novo = self._modo == NOVO
+        estado = "normal" if novo else "disabled"
+        for controle in (self._botao_anterior, self._botao_proximo, self._botao_hoje, self._entrada_data):
+            controle.configure(state=estado)
+        if novo:
+            self._rotulo_modo.configure(text="Novo registro  ·  trocar a data mantém o conteúdo",
+                                        text_color=tema.COR_TEXTO_SECUNDARIO)
         else:
-            self._rotulo_modo.configure(text="Novo registro", text_color=tema.COR_TEXTO_SECUNDARIO)
+            self._rotulo_modo.configure(text="Editando registro existente  ·  data travada",
+                                        text_color=tema.COR_AVISO)
 
     def _status(self, texto: str, cor: str = tema.COR_TEXTO_SECUNDARIO) -> None:
         self._rotulo_status.configure(text=texto, text_color=cor)
 
-    # --- Carregar datas ---------------------------------------------------
+    # --- Abrir registros --------------------------------------------------
+
+    def _atualizar_registradas(self) -> None:
+        registros, _ = self.repositorio.carregar_todos()
+        self._registradas = {r.data for r in registros}
 
     def ao_exibir(self) -> None:
+        self._atualizar_registradas()
         if not self._carregado:
-            self._carregar(date.today())
+            hoje = date.today()
+            if hoje in self._registradas:
+                self._abrir_edicao(hoje)
+            else:
+                self._iniciar_novo(hoje)
+        elif self._modo == EDICAO and self._data not in self._registradas:
+            # O dia foi excluído no Histórico: o conteúdo continua aqui como registro novo.
+            self._modo = NOVO
+            self._atualizar_cabecalho()
 
-    def abrir_data(self, data: date) -> None:
-        """Abre uma data no formulário, confirmando se há alterações não salvas."""
-        if self._carregado and data == self._data:
-            return
-        if self._tem_alteracoes() and not messagebox.askyesno(
+    def _pode_descartar(self) -> bool:
+        if not self._tem_alteracoes():
+            return True
+        return messagebox.askyesno(
             "Alterações não salvas",
-            f"Há alterações não salvas em {data_curta(self._data)}.\n\nDescartar e abrir outra data?",
+            f"O registro de {data_curta(self._data)} tem alterações não salvas.\n\nDescartá-las?",
             parent=self,
-        ):
-            self._atualizar_cabecalho()
-            return
-        self._carregar(data)
+        )
 
-    def _data_digitada(self) -> None:
-        texto = self._entrada_data.get().strip()
-        if texto == data_curta(self._data):
+    def abrir_registro(self, data: date) -> None:
+        """Usado pelo Histórico e pela tela inicial: edita o dia, ou começa um novo nele."""
+        self._atualizar_registradas()
+        if self._carregado and data == self._data and (data in self._registradas) == (self._modo == EDICAO):
             return
-        try:
-            data = datetime.strptime(texto, "%d/%m/%Y").date()
-        except ValueError:
-            messagebox.showwarning("Data inválida", "Use o formato DD/MM/AAAA.", parent=self)
-            self._atualizar_cabecalho()
+        if not self._pode_descartar():
             return
-        self.abrir_data(data)
+        if data in self._registradas:
+            self._abrir_edicao(data)
+        else:
+            self._iniciar_novo(min(data, date.today()))
 
-    def _carregar(self, data: date) -> None:
+    def novo_registro(self) -> None:
+        if not self._pode_descartar():
+            return
+        self._atualizar_registradas()
+        data = data_livre_mais_recente(self._registradas, date.today())
+        if data is None:
+            messagebox.showinfo("Novo registro", "Todos os dias até hoje já têm registro.", parent=self)
+            return
+        self._iniciar_novo(data)
+
+    def _iniciar_novo(self, data: date, formulario: dict | None = None) -> None:
+        self._modo = NOVO
+        self._data = data
+        self._preencher(self._formulario_vazio(data))
+        self._base = _sem_data(self._ler())  # base = formulário em branco
+        if formulario:
+            self._preencher(formulario)
+        self._carregado = True
+        self._descartar_rascunho()
+        self._atualizar_cabecalho()
+        self._status("")
+
+    def _abrir_edicao(self, data: date) -> None:
         try:
             existente = self.repositorio.obter_dia(data)
         except (ArquivoCorrompidoError, VersaoIncompativelError) as erro:
             messagebox.showerror("Não foi possível ler a semana", str(erro), parent=self)
-            existente = None
-
+            return
+        if existente is None:
+            self._iniciar_novo(data)
+            return
+        self._modo = EDICAO
         self._data = data
-        self._editando = existente is not None
-        self._preencher(registro_para_formulario(existente or RegistroDia(data=data)))
+        self._preencher(registro_para_formulario(existente))
         # A base é lida de volta da tela, para comparar sempre "igual com igual".
-        self._base = self._ler()
+        self._base = _sem_data(self._ler())
         self._carregado = True
         self._descartar_rascunho()
         self._atualizar_cabecalho()
@@ -363,9 +441,49 @@ class TelaRegistro(TelaBase):
 
     def recuperar_rascunho(self, formulario: dict) -> None:
         """Chamado pela janela ao abrir o app, se o usuário aceitar recuperar."""
-        self._carregar(date.fromisoformat(formulario["data"]))
-        self._preencher(formulario)
+        self._atualizar_registradas()
+        data = date.fromisoformat(formulario["data"])
+        if data in self._registradas:
+            self._abrir_edicao(data)
+            self._preencher(formulario)
+        else:
+            self._iniciar_novo(data, formulario)
         self._salvar_rascunho_se_preciso()
+
+    # --- Troca de data (só no modo novo) ----------------------------------
+
+    def _mudar_data(self, data: date) -> None:
+        """Muda a data do registro novo mantendo tudo o que foi preenchido."""
+        if self._modo != NOVO or data == self._data:
+            self._atualizar_cabecalho()
+            return
+        erro = erro_data_nova(data, self._registradas, date.today())
+        if erro:
+            messagebox.showwarning("Data indisponível", erro, parent=self)
+            self._atualizar_cabecalho()
+            return
+        self._data = data
+        self._atualizar_cabecalho()
+
+    def _andar_data(self, passo: int) -> None:
+        """Setas: vão para o dia livre mais próximo, pulando os já registrados."""
+        destino = proxima_data_livre(self._data + timedelta(days=passo), passo, self._registradas, date.today())
+        if destino is None:
+            self._status("Não há dias livres nessa direção.", tema.COR_AVISO)
+            return
+        self._mudar_data(destino)
+
+    def _data_digitada(self) -> None:
+        texto = self._entrada_data.get().strip()
+        if self._modo != NOVO or texto == data_curta(self._data):
+            return
+        try:
+            data = datetime.strptime(texto, "%d/%m/%Y").date()
+        except ValueError:
+            messagebox.showwarning("Data inválida", "Use o formato DD/MM/AAAA.", parent=self)
+            self._atualizar_cabecalho()
+            return
+        self._mudar_data(data)
 
     # --- Salvar -----------------------------------------------------------
 
@@ -379,26 +497,26 @@ class TelaRegistro(TelaBase):
             return
 
         try:
-            try:
-                self.repositorio.salvar_dia(registro, sobrescrever=self._editando)
-            except RegistroDuplicadoError:
-                # Acontece se o dia foi criado em outro lugar depois de abrirmos o formulário.
-                if not messagebox.askyesno(
-                    "Registro já existe",
-                    f"Já existe um registro em {data_curta(registro.data)}.\n\n"
-                    "Substituir pelo que está no formulário?",
-                    parent=self,
-                ):
-                    return
-                self.repositorio.salvar_dia(registro, sobrescrever=True)
+            self.repositorio.salvar_dia(registro, sobrescrever=self._modo == EDICAO)
+        except RegistroDuplicadoError:
+            # Só acontece se o dia foi registrado por outro caminho (ex.: importação) depois.
+            messagebox.showerror(
+                "Data indisponível",
+                f"{data_curta(registro.data)} já tem um registro. Escolha outra data ou edite "
+                "aquele dia pelo Histórico.",
+                parent=self,
+            )
+            self._atualizar_registradas()
+            return
         except (ArquivoCorrompidoError, VersaoIncompativelError) as erro:
             messagebox.showerror("Não foi possível salvar", str(erro), parent=self)
             return
 
-        self._editando = True
-        # Reexibe os valores normalizados (ex.: "730" vira "07:30").
+        self._modo = EDICAO
+        self._registradas.add(registro.data)
+        # Reexibe os valores normalizados (ex.: horas manuais "6.0" viram "6").
         self._preencher(registro_para_formulario(registro))
-        self._base = self._ler()
+        self._base = _sem_data(self._ler())
         self._descartar_rascunho()
         self._atualizar_cabecalho()
         self._status(f"✓ Salvo às {datetime.now():%H:%M}", tema.COR_SUCESSO)
@@ -415,7 +533,7 @@ class TelaRegistro(TelaBase):
         if not self._carregado:
             return
         atual = self._ler()
-        if atual == self._base:
+        if _sem_data(atual) == self._base:
             if self._ultimo_rascunho is not None:
                 self._descartar_rascunho()
                 self._status("")

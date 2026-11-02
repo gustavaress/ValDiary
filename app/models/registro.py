@@ -141,10 +141,127 @@ class Rotina:
 
 # --- Valorant -------------------------------------------------------------
 
+RESULTADOS = ("vitoria", "derrota", "empate")
+
+
 @dataclass
-class AgenteJogado:
-    nome: str
+class Partida:
+    agente: str | None = None
+    resultado: str | None = None  # "vitoria", "derrota" ou "empate"
+    abates: int | None = None
+    mortes: int | None = None
+    assistencias: int | None = None
+    hs_pct: float | None = None
+    acs: float | None = None
+
+    @property
+    def kd(self) -> float | None:
+        if self.abates is None or self.mortes is None:
+            return None
+        return round(self.abates / max(self.mortes, 1), 2)
+
+
+def _razao(numerador: int | None, mortes: int | None) -> float | None:
+    # Com 0 mortes, dividimos por 1 (convenção usada pelos trackers).
+    if numerador is None or mortes is None:
+        return None
+    return round(numerador / max(mortes, 1), 2)
+
+
+@dataclass(frozen=True)
+class ResumoJogo:
+    """Números do dia, sempre CALCULADOS (a partir das partidas ou do legado)."""
     partidas: int | None = None
+    vitorias: int | None = None
+    derrotas: int | None = None
+    empates: int | None = None
+    abates: int | None = None          # totais do dia
+    mortes: int | None = None
+    assistencias: int | None = None
+    hs_pct: float | None = None        # médias por partida
+    acs: float | None = None
+    agentes: dict = field(default_factory=dict)  # {"Jett": 3, ...}
+    # Base do winrate: partidas com resultado conhecido (partidas sem resultado
+    # marcado não contam como derrota).
+    partidas_com_resultado: int | None = None
+
+    @property
+    def kd(self) -> float | None:
+        return _razao(self.abates, self.mortes)
+
+    @property
+    def kda(self) -> float | None:
+        if self.abates is None:
+            return None
+        return _razao(self.abates + (self.assistencias or 0), self.mortes)
+
+    @property
+    def kda_texto(self) -> str | None:
+        if self.abates is None or self.mortes is None:
+            return None
+        return f"{self.abates}/{self.mortes}/{self.assistencias or 0}"
+
+    @property
+    def winrate_pct(self) -> float | None:
+        if self.vitorias is None or not self.partidas_com_resultado:
+            return None
+        return round(self.vitorias / self.partidas_com_resultado * 100, 1)
+
+    def to_dict(self) -> dict:
+        dados = asdict(self)
+        dados.update(kd=self.kd, kda=self.kda, kda_texto=self.kda_texto, winrate_pct=self.winrate_pct)
+        return dados
+
+
+def _soma(valores) -> int | None:
+    presentes = [v for v in valores if v is not None]
+    return sum(presentes) if presentes else None
+
+
+def _media(valores) -> float | None:
+    presentes = [v for v in valores if v is not None]
+    return round(sum(presentes) / len(presentes), 1) if presentes else None
+
+
+def resumir_partidas(partidas: list[Partida]) -> ResumoJogo:
+    resultados = [p.resultado for p in partidas if p.resultado]
+    contar = (lambda r: resultados.count(r)) if resultados else (lambda r: None)
+    agentes: dict[str, int] = {}
+    for partida in partidas:
+        if partida.agente:
+            agentes[partida.agente] = agentes.get(partida.agente, 0) + 1
+    return ResumoJogo(
+        partidas=len(partidas) or None,
+        vitorias=contar("vitoria"),
+        derrotas=contar("derrota"),
+        empates=contar("empate"),
+        abates=_soma(p.abates for p in partidas),
+        mortes=_soma(p.mortes for p in partidas),
+        assistencias=_soma(p.assistencias for p in partidas),
+        hs_pct=_media(p.hs_pct for p in partidas),
+        acs=_media(p.acs for p in partidas),
+        agentes=agentes,
+        partidas_com_resultado=len(resultados) or None,
+    )
+
+
+def resumir_legado(legado: dict) -> ResumoJogo:
+    """Dias registrados antes do registro por partida (formato v2: totais do dia)."""
+    agentes = {a["nome"]: a.get("partidas") for a in legado.get("agentes") or [] if isinstance(a, dict)}
+    return ResumoJogo(
+        partidas=legado.get("partidas"),
+        vitorias=legado.get("vitorias"),
+        derrotas=legado.get("derrotas"),
+        empates=legado.get("empates"),
+        abates=legado.get("abates"),
+        mortes=legado.get("mortes"),
+        assistencias=legado.get("assistencias"),
+        hs_pct=legado.get("hs_pct"),
+        acs=legado.get("acs"),
+        agentes=agentes,
+        # Regra do formato antigo: winrate = vitórias ÷ partidas do dia.
+        partidas_com_resultado=legado.get("partidas") if legado.get("vitorias") is not None else None,
+    )
 
 
 @dataclass
@@ -163,77 +280,40 @@ class Valorant:
     horario_inicio: str | None = None
     horario_fim: str | None = None
 
-    partidas: int | None = None
-    vitorias: int | None = None
-    derrotas: int | None = None
-    empates: int | None = None
-
-    # Totais somados de todas as partidas do dia.
-    abates: int | None = None
-    mortes: int | None = None
-    assistencias: int | None = None
-
-    # Médias por partida.
-    acs: float | None = None
-    adr: float | None = None
-    hs_pct: float | None = None
-
-    agentes: list[AgenteJogado] = field(default_factory=list)
+    partidas: list[Partida] = field(default_factory=list)
     avaliacao: AvaliacaoJogo = field(default_factory=AvaliacaoJogo)
     notas: str | None = None
-
-    # Valores derivados: calculados, nunca digitados. Com 0 mortes,
-    # dividimos por 1 (convenção usada pelos trackers).
-    @property
-    def kd(self) -> float | None:
-        if self.abates is None or self.mortes is None:
-            return None
-        return round(self.abates / max(self.mortes, 1), 2)
+    # Totais do dia no formato antigo (antes do registro por partida). Guardado
+    # como veio, sem perder nada; usado no resumo só quando não há partidas.
+    legado: dict | None = None
 
     @property
-    def kda(self) -> float | None:
-        if self.abates is None or self.mortes is None:
-            return None
-        return round((self.abates + (self.assistencias or 0)) / max(self.mortes, 1), 2)
-
-    @property
-    def kda_texto(self) -> str | None:
-        if self.abates is None or self.mortes is None:
-            return None
-        return f"{self.abates}/{self.mortes}/{self.assistencias or 0}"
+    def resumo(self) -> ResumoJogo:
+        if self.partidas:
+            return resumir_partidas(self.partidas)
+        if self.legado:
+            return resumir_legado(self.legado)
+        return ResumoJogo()
 
     @property
     def nomes_agentes(self) -> list[str]:
-        return [a.nome for a in self.agentes]
-
-    @property
-    def winrate_pct(self) -> float | None:
-        if not self.partidas or self.vitorias is None:
-            return None
-        return round(self.vitorias / self.partidas * 100, 1)
+        return list(self.resumo.agentes)
 
     def to_dict(self) -> dict:
         dados = asdict(self)
-        # Os derivados vão para o JSON para facilitar a leitura humana e pela IA,
-        # mas são ignorados ao carregar (sempre recalculados).
-        dados["derivados"] = {
-            "kd": self.kd,
-            "kda": self.kda,
-            "kda_texto": self.kda_texto,
-            "winrate_pct": self.winrate_pct,
-        }
+        # O resumo vai para o JSON para facilitar a leitura humana e pela IA,
+        # mas é ignorado ao carregar (sempre recalculado).
+        dados["resumo"] = self.resumo.to_dict()
         return dados
 
     @classmethod
     def from_dict(cls, dados: dict | None) -> "Valorant":
         dados = dict(dados or {})
         avaliacao = _simples(AvaliacaoJogo, dados.pop("avaliacao", None))
-        agentes = dados.pop("agentes", None) or []
+        partidas = dados.pop("partidas", None) or []
         objeto = _simples(cls, dados)
         objeto.avaliacao = avaliacao
-        # Tolera o formato antigo (só o nome) caso apareça num arquivo editado à mão.
-        objeto.agentes = [AgenteJogado(nome=a) if isinstance(a, str) else _simples(AgenteJogado, a)
-                          for a in agentes]
+        objeto.partidas = [_simples(Partida, p) for p in partidas]
         return objeto
 
 

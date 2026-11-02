@@ -35,6 +35,7 @@ def registros_para_dataframe(registros: list[RegistroDia]) -> pd.DataFrame:
     for registro in registros:
         rotina, jogo = registro.rotina, registro.valorant
         avaliacao = jogo.avaliacao
+        resumo = jogo.resumo
         classificacao = registro.classificacao.value if registro.classificacao else None
         linhas.append({
             "data": registro.data,
@@ -49,13 +50,12 @@ def registros_para_dataframe(registros: list[RegistroDia]) -> pd.DataFrame:
             "disposicao_mental": rotina.disposicao_mental,
             "estresse": rotina.estresse,
             "inicio_jogo": hora_decimal(jogo.horario_inicio),
-            "partidas": jogo.partidas,
-            "winrate_pct": jogo.winrate_pct,
-            "kd": jogo.kd,
-            "kda": jogo.kda,
-            "acs": jogo.acs,
-            "adr": jogo.adr,
-            "hs_pct": jogo.hs_pct,
+            "partidas": resumo.partidas,
+            "winrate_pct": resumo.winrate_pct,
+            "kd": resumo.kd,
+            "kda": resumo.kda,
+            "acs": resumo.acs,
+            "hs_pct": resumo.hs_pct,
             "mira": avaliacao.mira,
             "movimentacao": avaliacao.movimentacao,
             "tomada_decisao": avaliacao.tomada_decisao,

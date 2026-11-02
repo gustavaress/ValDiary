@@ -7,7 +7,7 @@ Campos vazios (None) nunca são erro, porque nada é obrigatório além da data.
 import re
 
 from app.config import ESCALA_MAX, ESCALA_MIN
-from app.models.registro import RegistroDia
+from app.models.registro import RESULTADOS, RegistroDia
 
 _FORMATO_HORA = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
@@ -64,32 +64,17 @@ def validar_registro(registro: RegistroDia) -> list[str]:
     if rotina.sono.horas is not None and rotina.sono.horas > 24:
         erros.append("Horas de sono: não pode passar de 24.")
     _checar_nao_negativo(erros, "Água (litros)", rotina.agua_litros)
-    for rotulo, valor in (
-        ("Partidas", jogo.partidas),
-        ("Vitórias", jogo.vitorias),
-        ("Derrotas", jogo.derrotas),
-        ("Empates", jogo.empates),
-        ("Abates", jogo.abates),
-        ("Mortes", jogo.mortes),
-        ("Assistências", jogo.assistencias),
-        ("ACS", jogo.acs),
-        ("ADR", jogo.adr),
-    ):
-        _checar_nao_negativo(erros, rotulo, valor)
 
-    if jogo.hs_pct is not None and not (0 <= jogo.hs_pct <= 100):
-        erros.append("HS%: deve estar entre 0 e 100.")
-
-    # Coerência entre resultado e número de partidas
-    resultados = [v for v in (jogo.vitorias, jogo.derrotas, jogo.empates) if v is not None]
-    if jogo.partidas is not None and sum(resultados) > jogo.partidas:
-        erros.append("Vitórias + derrotas + empates não pode ser maior que o número de partidas.")
-
-    for agente in jogo.agentes:
-        _checar_nao_negativo(erros, f"Partidas com {agente.nome}", agente.partidas)
-    soma_agentes = sum(a.partidas or 0 for a in jogo.agentes)
-    if jogo.partidas is not None and soma_agentes > jogo.partidas:
-        erros.append(f"A soma das partidas por agente ({soma_agentes}) é maior que o total "
-                     f"de partidas do dia ({jogo.partidas}).")
+    # Partidas. Vitórias/derrotas/empates não são validados no dia: são
+    # contados a partir das partidas, então nunca passam do total.
+    for numero, partida in enumerate(jogo.partidas, start=1):
+        rotulo = f"Partida {numero}"
+        for nome, valor in (("abates", partida.abates), ("mortes", partida.mortes),
+                            ("assistências", partida.assistencias), ("ACS", partida.acs)):
+            _checar_nao_negativo(erros, f"{rotulo} ({nome})", valor)
+        if partida.hs_pct is not None and not (0 <= partida.hs_pct <= 100):
+            erros.append(f"{rotulo} (HS%): deve estar entre 0 e 100.")
+        if partida.resultado is not None and partida.resultado not in RESULTADOS:
+            erros.append(f"{rotulo}: resultado inválido.")
 
     return erros

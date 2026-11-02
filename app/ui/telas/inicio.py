@@ -16,8 +16,8 @@ INDICADORES_SEMANA = [
     ("partidas", "Partidas", 0, ""),
     ("winrate_pct", "Winrate", 1, "%"),
     ("kd", "K/D", 2, ""),
+    ("kda", "KDA", 2, ""),
     ("acs_medio", "ACS médio", 0, ""),
-    ("adr_medio", "ADR médio", 0, ""),
     ("hs_medio", "HS% médio", 1, "%"),
     ("sono_medio", "Sono médio", 1, "h"),
     ("concentracao_media", "Concentração", 1, ""),
@@ -149,8 +149,9 @@ class TelaInicio(TelaBase):
         self._ultimo_titulo.configure(text=f"Último registro: {data_tabela(ultimo.data)}{sufixo}")
 
         partes = []
-        if ultimo.valorant.kda_texto:
-            partes.append(f"K/D/A {ultimo.valorant.kda_texto}  (K/D {numero(ultimo.valorant.kd)})")
+        jogo = ultimo.valorant.resumo
+        if jogo.kda_texto:
+            partes.append(f"K/D/A {jogo.kda_texto}  (K/D {numero(jogo.kd)})")
         if ultimo.valorant.notas:
             partes.append(f"Partidas: {ultimo.valorant.notas}")
         if ultimo.rotina.observacoes:

@@ -1,31 +1,35 @@
 from app.models.registro import (
-    AgenteJogado,
     AvaliacaoJogo,
     Alimentacao,
     Bebida,
     Classificacao,
     Medicamento,
+    Partida,
     Refeicao,
     RegistroDia,
+    ResumoJogo,
     Rotina,
     Sono,
     Valorant,
     calcular_horas_sono,
+    resumir_partidas,
 )
 from app.models.validacao import validar_registro
 
 __all__ = [
-    "AgenteJogado",
     "AvaliacaoJogo",
     "Alimentacao",
     "Bebida",
     "Classificacao",
     "Medicamento",
+    "Partida",
     "Refeicao",
     "RegistroDia",
+    "ResumoJogo",
     "Rotina",
     "Sono",
     "Valorant",
     "calcular_horas_sono",
+    "resumir_partidas",
     "validar_registro",
 ]

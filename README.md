@@ -20,7 +20,8 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 |---|---|---|
 | 📝 | **Registro diário** em abas (Rotina / Valorant / Anotações), com notas de 1 a 10 por clique | ✅ |
 | 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
-| 🎭 | **Agentes por imagem**, com o número de partidas jogadas com cada um | ✅ |
+| 🎮 | **Registro por partida** (agente pela bandeja de fotos, resultado, K/D/A, HS%, ACS) com resumo do dia calculado | ✅ |
+| 📅 | Validador de data: não deixa registrar dias já preenchidos nem datas futuras | ✅ |
 | 🧮 | Cálculo automático de horas de sono, K/D, KDA e winrate | ✅ |
 | 💾 | **Rascunho automático**: nada se perde se o app fechar antes de salvar | ✅ |
 | 📚 | **Histórico** com filtros por classificação, período e busca nas anotações | ✅ |
@@ -85,7 +86,7 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
 
 ```json
 {
-  "versao_schema": 2,
+  "versao_schema": 3,
   "ano": 2026,
   "semana": 45,
   "periodo": { "inicio": "2026-11-02", "fim": "2026-11-08" },
@@ -114,13 +115,19 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
         "jogou": true,
         "horario_inicio": "19:30",
         "horario_fim": "23:00",
-        "partidas": 4, "vitorias": 3, "derrotas": 1, "empates": null,
-        "abates": 72, "mortes": 55, "assistencias": 20,
-        "acs": 245, "adr": 158.4, "hs_pct": 27.5,
-        "agentes": [{ "nome": "Jett", "partidas": 3 }, { "nome": "Raze", "partidas": 1 }],
+        "partidas": [
+          { "agente": "Jett", "resultado": "vitoria", "abates": 20, "mortes": 15, "assistencias": 5, "hs_pct": 30.0, "acs": 260 },
+          { "agente": "Raze", "resultado": "derrota", "abates": 14, "mortes": 16, "assistencias": 6, "hs_pct": 22.0, "acs": 190 }
+        ],
         "avaliacao": { "mira": 9, "movimentacao": 8, "tomada_decisao": 7, "concentracao": 8, "consistencia": 7 },
         "notas": "Consegui fazer microajustes com facilidade.",
-        "derivados": { "kd": 1.31, "kda": 1.67, "kda_texto": "72/55/20", "winrate_pct": 75.0 }
+        "legado": null,
+        "resumo": {
+          "partidas": 2, "vitorias": 1, "derrotas": 1, "empates": 0,
+          "abates": 34, "mortes": 31, "assistencias": 11, "hs_pct": 26.0, "acs": 225.0,
+          "agentes": { "Jett": 1, "Raze": 1 }, "partidas_com_resultado": 2,
+          "kd": 1.1, "kda": 1.45, "kda_texto": "34/31/11", "winrate_pct": 50.0
+        }
       },
       "criado_em": "2026-11-02T23:40:02",
       "editado_em": null
@@ -129,8 +136,8 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
 }
 ```
 
-- **K/D/A** são os totais somados do dia. **ACS, ADR e HS%** são médias por partida.
-- O bloco `derivados` é calculado automaticamente, nunca digitado.
+- Cada item de `partidas` é **uma partida**. O bloco `resumo` é **calculado** a partir delas (nunca digitado): K/D/A são totais do dia, ACS e HS% são médias por partida, e o winrate considera só as partidas com resultado marcado.
+- `legado`: dias registrados antes do registro por partida guardam ali os totais digitados na época (incluindo o ADR, que não é mais usado). Eles continuam entrando nas análises.
 - Refeições: `"realizada": true` quando a caixa foi marcada; `null` quando não (não teve ou não registrou).
 
 ### Versões do formato
@@ -141,6 +148,7 @@ O campo `versao_schema` indica o formato do arquivo. Quando o formato muda, o ap
 |---|---|
 | 1 | Formato inicial |
 | 2 | Refeições ganham `realizada`; `agentes` passa de lista de nomes para `{nome, partidas}` |
+| 3 | Valorant registrado **por partida**; totais antigos do dia vão para `legado`; ADR sai das análises |
 
 ## Imagens dos agentes
 

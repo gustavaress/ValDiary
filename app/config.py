@@ -11,7 +11,7 @@ NOME_APP = "Diário de Performance Valorant"
 
 # Versão do formato dos arquivos JSON. Sempre que a estrutura mudar de forma
 # incompatível, incrementamos este número e escrevemos uma migração.
-VERSAO_SCHEMA = 2
+VERSAO_SCHEMA = 3
 
 # Escala usada em todas as notas subjetivas (sono, disposição, mira...).
 ESCALA_MIN = 1

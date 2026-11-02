@@ -5,7 +5,7 @@ import pytest
 
 from app import config
 
-from app.models import Classificacao, RegistroDia
+from app.models import Classificacao, Partida, RegistroDia
 from app.storage import (
     ArquivoCorrompidoError,
     RegistroDuplicadoError,
@@ -23,7 +23,7 @@ def repo(tmp_path) -> RepositorioDiario:
 
 def _dia(ano, mes, dia, kd_abates=None) -> RegistroDia:
     r = RegistroDia(data=date(ano, mes, dia))
-    r.valorant.abates = kd_abates
+    r.valorant.partidas = [Partida(abates=kd_abates)] if kd_abates is not None else []
     return r
 
 
@@ -63,11 +63,11 @@ def test_editar_substitui_e_preserva_os_outros_dias(repo):
     repo.salvar_dia(editado, sobrescrever=True)
 
     dia2 = repo.obter_dia(date(2026, 11, 2))
-    assert dia2.valorant.abates == 99
+    assert dia2.valorant.resumo.abates == 99
     assert dia2.classificacao == Classificacao.EXCELENTE
     assert dia2.criado_em == criado_em
     assert dia2.editado_em is not None
-    assert repo.obter_dia(date(2026, 11, 3)).valorant.abates == 20
+    assert repo.obter_dia(date(2026, 11, 3)).valorant.resumo.abates == 20
 
 
 def test_excluir_dia(repo):

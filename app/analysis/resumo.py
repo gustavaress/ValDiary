@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
-from app.models import RegistroDia
+from app.models import RegistroDia, ResumoJogo
 
 
 @dataclass
@@ -13,8 +13,8 @@ class ResumoPeriodo:
     partidas: int = 0
     winrate_pct: float | None = None
     kd: float | None = None
+    kda: float | None = None
     acs_medio: float | None = None
-    adr_medio: float | None = None
     hs_medio: float | None = None
     sono_medio: float | None = None
     concentracao_media: float | None = None
@@ -26,49 +26,60 @@ def _media(valores) -> float | None:
     return round(sum(presentes) / len(presentes), 2) if presentes else None
 
 
-def _media_por_partida(registros: list[RegistroDia], atributo: str) -> float | None:
-    """Média de uma estatística diária (ACS, ADR, HS%) ponderada pelas partidas.
+def _media_por_partida(resumos: list[ResumoJogo], atributo: str) -> float | None:
+    """Média de uma estatística diária (ACS, HS%) ponderada pelas partidas.
 
     Um dia com 6 partidas pesa mais que um dia com 1. Se o número de partidas
     não foi registrado, o dia conta com peso 1.
     """
     soma = peso_total = 0
-    for registro in registros:
-        valor = getattr(registro.valorant, atributo)
+    for resumo in resumos:
+        valor = getattr(resumo, atributo)
         if valor is None:
             continue
-        peso = registro.valorant.partidas or 1
+        peso = resumo.partidas or 1
         soma += valor * peso
         peso_total += peso
     return round(soma / peso_total, 1) if peso_total else None
 
 
 def resumir(registros: list[RegistroDia]) -> ResumoPeriodo:
-    jogos = [r.valorant for r in registros]
+    resumos = [r.valorant.resumo for r in registros]
 
-    # Winrate e K/D usam a soma do período (e não a média das médias diárias),
-    # para que dias com mais partidas tenham o peso correto.
-    com_resultado = [j for j in jogos if j.partidas and j.vitorias is not None]
-    partidas_com_resultado = sum(j.partidas for j in com_resultado)
-    winrate = (round(sum(j.vitorias for j in com_resultado) / partidas_com_resultado * 100, 1)
-               if partidas_com_resultado else None)
-
-    com_kd = [j for j in jogos if j.abates is not None and j.mortes is not None]
-    kd = (round(sum(j.abates for j in com_kd) / max(sum(j.mortes for j in com_kd), 1), 2)
-          if com_kd else None)
-
+    # Winrate, K/D e KDA usam a soma do período (e não a média das médias
+    # diárias), para que dias com mais partidas tenham o peso correto.
+    com_resultado = [r for r in resumos if r.vitorias is not None and r.partidas_com_resultado]
+    periodo = ResumoJogo(
+        vitorias=_soma(r.vitorias for r in com_resultado),
+        partidas_com_resultado=_soma(r.partidas_com_resultado for r in com_resultado),
+        **_totais_kda(resumos),
+    )
     return ResumoPeriodo(
         dias=len(registros),
-        partidas=sum(j.partidas or 0 for j in jogos),
-        winrate_pct=winrate,
-        kd=kd,
-        acs_medio=_media_por_partida(registros, "acs"),
-        adr_medio=_media_por_partida(registros, "adr"),
-        hs_medio=_media_por_partida(registros, "hs_pct"),
+        partidas=sum(r.partidas or 0 for r in resumos),
+        winrate_pct=periodo.winrate_pct,
+        kd=periodo.kd,
+        kda=periodo.kda,
+        acs_medio=_media_por_partida(resumos, "acs"),
+        hs_medio=_media_por_partida(resumos, "hs_pct"),
         sono_medio=_media(r.rotina.sono.horas_efetivas for r in registros),
-        concentracao_media=_media(j.avaliacao.concentracao for j in jogos),
+        concentracao_media=_media(r.valorant.avaliacao.concentracao for r in registros),
         classificacoes=Counter(r.classificacao.value for r in registros if r.classificacao),
     )
+
+
+def _soma(valores) -> int | None:
+    presentes = [v for v in valores if v is not None]
+    return sum(presentes) if presentes else None
+
+
+def _totais_kda(resumos: list[ResumoJogo]) -> dict:
+    """Soma K, D e A só dos dias que têm abates E mortes, para o K/D não ficar distorcido."""
+    com_kd = [r for r in resumos if r.abates is not None and r.mortes is not None]
+    if not com_kd:
+        return {}
+    return {"abates": sum(r.abates for r in com_kd), "mortes": sum(r.mortes for r in com_kd),
+            "assistencias": sum(r.assistencias or 0 for r in com_kd)}
 
 
 def sequencia_atual(registros: list[RegistroDia], hoje: date) -> int:

@@ -16,11 +16,10 @@ COLUNAS = [
     ("classificacao", "Dia", 90, "w"),
     ("sono", "Sono", 60, "center"),
     ("partidas", "Partidas", 70, "center"),
-    ("resultado", "V / D", 70, "center"),
+    ("resultado", "V / D / E", 80, "center"),
     ("kda", "K / D / A", 100, "center"),
     ("kd", "K/D", 60, "center"),
     ("acs", "ACS", 60, "center"),
-    ("adr", "ADR", 60, "center"),
     ("hs", "HS%", 60, "center"),
     ("mira", "Mira", 50, "center"),
     ("concentracao", "Conc.", 50, "center"),
@@ -35,11 +34,14 @@ PERIODOS = {
 
 
 def _valores_linha(registro) -> tuple:
-    rotina, jogo = registro.rotina, registro.valorant
+    rotina, jogo = registro.rotina, registro.valorant.resumo
+    avaliacao = registro.valorant.avaliacao
     classificacao = registro.classificacao
     resultado = "—"
     if jogo.vitorias is not None or jogo.derrotas is not None:
         resultado = f"{jogo.vitorias or 0}V {jogo.derrotas or 0}D"
+        if jogo.empates:
+            resultado += f" {jogo.empates}E"
     return (
         data_tabela(registro.data),
         tema.ROTULOS_CLASSIFICACAO[classificacao] if classificacao else "—",
@@ -49,10 +51,9 @@ def _valores_linha(registro) -> tuple:
         jogo.kda_texto or "—",
         numero(jogo.kd),
         numero(jogo.acs, 0),
-        numero(jogo.adr, 0),
         numero(jogo.hs_pct, 1),
-        numero(jogo.avaliacao.mira),
-        numero(jogo.avaliacao.concentracao),
+        numero(avaliacao.mira),
+        numero(avaliacao.concentracao),
     )
 
 
@@ -191,10 +192,10 @@ class TelaHistorico(TelaBase):
         else:
             self._detalhe_titulo.configure(text=data_extensa(registro.data))
             partes = []
-            if registro.valorant.agentes:
-                agentes = ", ".join(f"{a.nome} ({a.partidas})" if a.partidas else a.nome
-                                    for a in registro.valorant.agentes)
-                partes.append(f"Agentes: {agentes}")
+            agentes = registro.valorant.resumo.agentes
+            if agentes:
+                texto = ", ".join(f"{nome} ({n})" if n else nome for nome, n in agentes.items())
+                partes.append(f"Agentes: {texto}")
             if registro.valorant.notas:
                 partes.append(f"Partidas: {registro.valorant.notas}")
             if registro.rotina.observacoes:
