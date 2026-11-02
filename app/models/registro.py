@@ -231,7 +231,9 @@ class Valorant:
         agentes = dados.pop("agentes", None) or []
         objeto = _simples(cls, dados)
         objeto.avaliacao = avaliacao
-        objeto.agentes = [_simples(AgenteJogado, a) for a in agentes]
+        # Tolera o formato antigo (só o nome) caso apareça num arquivo editado à mão.
+        objeto.agentes = [AgenteJogado(nome=a) if isinstance(a, str) else _simples(AgenteJogado, a)
+                          for a in agentes]
         return objeto
 
 

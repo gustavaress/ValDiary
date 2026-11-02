@@ -7,17 +7,22 @@ import customtkinter as ctk
 
 from app.models import RegistroDia, calcular_horas_sono, validar_registro
 from app.storage import ArquivoCorrompidoError, RegistroDuplicadoError, VersaoIncompativelError
+from app.storage.catalogo_agentes import carregar_agentes
 from app.storage.rascunho import apagar_rascunho, salvar_rascunho
 from app.ui import conversao, tema
 from app.ui.componentes import (
     CampoEntrada,
+    CampoHorario,
+    CampoMarcacao,
     CampoNota,
     CampoTextoLongo,
     ListaEditavel,
     Secao,
+    SeletorAgentes,
     SeletorBotoes,
     SeletorClassificacao,
 )
+from app.ui.componentes.lista_editavel import HORA, TEXTO
 from app.ui.formatacao import data_curta, data_extensa, numero
 from app.ui.mapeamento_registro import (
     derivados_ao_vivo,
@@ -27,6 +32,7 @@ from app.ui.mapeamento_registro import (
 from app.ui.telas.base import TelaBase
 
 INTERVALO_AUTOSAVE_MS = 3000
+REFEICOES = (("cafe", "Café da manhã"), ("almoco", "Almoço"), ("jantar", "Jantar"))
 
 
 class TelaRegistro(TelaBase):
@@ -58,12 +64,15 @@ class TelaRegistro(TelaBase):
             anchor="w",
         )
         abas.grid(row=2, column=0, sticky="nsew")
+        self._abas = abas
+        self._areas: dict[str, ctk.CTkScrollableFrame] = {}
         for nome, montar in (("Rotina", self._montar_aba_rotina),
                              ("Valorant", self._montar_aba_valorant),
                              ("Anotações", self._montar_aba_anotacoes)):
             abas.add(nome)
             area = ctk.CTkScrollableFrame(abas.tab(nome), fg_color="transparent")
             area.pack(fill="both", expand=True)
+            self._areas[nome] = area
             montar(area)
 
         self.after(INTERVALO_AUTOSAVE_MS, self._autosave)
@@ -125,32 +134,33 @@ class TelaRegistro(TelaBase):
     def _montar_aba_rotina(self, area) -> None:
         secao = Secao(area, "Sono")
         secao.pack(fill="x", pady=(0, 10))
-        dormiu = CampoEntrada(secao.conteudo, "Dormiu às", placeholder="23:30")
-        acordou = CampoEntrada(secao.conteudo, "Acordou às", placeholder="07:30")
+        dormiu = CampoHorario(secao.conteudo, "Dormiu às", ao_mudar=self._atualizar_horas_auto)
+        acordou = CampoHorario(secao.conteudo, "Acordou às", ao_mudar=self._atualizar_horas_auto)
         horas = CampoEntrada(secao.conteudo, "Horas dormidas", placeholder="automático")
         self._grade(secao, [("sono_dormiu_as", dormiu), ("sono_acordou_as", acordou), ("sono_horas", horas)])
         self._rotulo_horas_auto = ctk.CTkLabel(secao.conteudo, text="", font=tema.fonte_pequena(),
                                                text_color=tema.COR_TEXTO_SECUNDARIO)
         self._rotulo_horas_auto.grid(row=0, column=3, sticky="sw", pady=(0, 10))
-        dormiu.ao_digitar(self._atualizar_horas_auto)
-        acordou.ao_digitar(self._atualizar_horas_auto)
         qualidade = CampoNota(secao.conteudo, "Qualidade do sono")
         qualidade.grid(row=1, column=0, columnspan=4, sticky="w", pady=4)
         self._campos["sono_qualidade"] = qualidade
 
-        secao = Secao(area, "Alimentação")
+        secao = Secao(area, "Alimentação", "Marque as refeições que você fez para preencher os detalhes.")
         secao.pack(fill="x", pady=10)
-        for linha, (chave, nome) in enumerate((("cafe", "Café da manhã"), ("almoco", "Almoço"),
-                                               ("jantar", "Jantar"))):
-            horario = CampoEntrada(secao.conteudo, f"{nome} – horário", largura=90, placeholder="HH:MM")
-            descricao = CampoEntrada(secao.conteudo, "O que comeu", largura=440)
-            horario.grid(row=linha, column=0, sticky="w", padx=(0, 12), pady=4)
-            descricao.grid(row=linha, column=1, sticky="w", pady=4)
+        for linha, (chave, nome) in enumerate(REFEICOES):
+            marcacao = CampoMarcacao(secao.conteudo, nome, ao_mudar=self._atualizar_refeicoes)
+            horario = CampoHorario(secao.conteudo, "Horário")
+            descricao = CampoEntrada(secao.conteudo, "O que comeu", largura=400)
+            marcacao.grid(row=linha, column=0, sticky="w", padx=(0, 16), pady=(18, 4))
+            horario.grid(row=linha, column=1, sticky="w", padx=(0, 12), pady=4)
+            descricao.grid(row=linha, column=2, sticky="w", pady=4)
+            self._campos[f"{chave}_realizada"] = marcacao
             self._campos[f"{chave}_horario"] = horario
             self._campos[f"{chave}_descricao"] = descricao
-        outros = CampoEntrada(secao.conteudo, "Outros (lanches, doces...)", largura=542)
-        outros.grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
+        outros = CampoEntrada(secao.conteudo, "Outros (lanches, doces...)", largura=560)
+        outros.grid(row=len(REFEICOES), column=0, columnspan=3, sticky="w", pady=(10, 4))
         self._campos["alimentacao_outros"] = outros
+        self._atualizar_refeicoes()
 
         secao = Secao(area, "Hidratação e bebidas")
         secao.pack(fill="x", pady=10)
@@ -160,14 +170,14 @@ class TelaRegistro(TelaBase):
         ctk.CTkLabel(secao.conteudo, text="Café, energético e outras bebidas",
                      font=tema.fonte_pequena(), text_color=tema.COR_TEXTO_SECUNDARIO).pack(anchor="w")
         self._campos["bebidas"] = ListaEditavel(
-            secao.conteudo, [("tipo", "Bebida (ex.: café)", 200), ("quantidade", "Quantidade", 140),
-                             ("horario", "HH:MM", 80)], "+ Bebida")
+            secao.conteudo, [("tipo", "Bebida (ex.: café)", 200, TEXTO), ("quantidade", "Quantidade", 140, TEXTO),
+                             ("horario", "", 0, HORA)], "+ Bebida")
         self._campos["bebidas"].pack(anchor="w", fill="x")
 
         secao = Secao(area, "Medicamentos")
         secao.pack(fill="x", pady=10)
         self._campos["medicamentos"] = ListaEditavel(
-            secao.conteudo, [("nome", "Nome", 220), ("dose", "Dose", 120), ("horario", "HH:MM", 80)],
+            secao.conteudo, [("nome", "Nome", 220, TEXTO), ("dose", "Dose", 120, TEXTO), ("horario", "", 0, HORA)],
             "+ Medicamento")
         self._campos["medicamentos"].pack(anchor="w", fill="x")
 
@@ -189,8 +199,8 @@ class TelaRegistro(TelaBase):
         jogou.pack(anchor="w")
         rotulo.grid(row=0, column=0, sticky="w", padx=(0, 18), pady=4)
         self._campos["jogou"] = jogou
-        inicio = CampoEntrada(secao.conteudo, "Começou às", placeholder="19:00")
-        fim = CampoEntrada(secao.conteudo, "Parou às", placeholder="23:00")
+        inicio = CampoHorario(secao.conteudo, "Começou às")
+        fim = CampoHorario(secao.conteudo, "Parou às")
         inicio.grid(row=0, column=1, sticky="w", padx=(0, 18), pady=4)
         fim.grid(row=0, column=2, sticky="w", pady=4)
         self._campos["jogo_inicio"] = inicio
@@ -218,10 +228,12 @@ class TelaRegistro(TelaBase):
                                               text_color=tema.COR_DESTAQUE)
         self._rotulo_derivados.grid(row=3, column=0, columnspan=4, sticky="w", pady=(10, 0))
 
-        agentes = CampoEntrada(secao.conteudo, "Agentes usados (separe por vírgula)",
-                               largura=440, placeholder="Jett, Raze")
-        agentes.grid(row=4, column=0, columnspan=4, sticky="w", pady=(10, 4))
-        self._campos["agentes"] = agentes
+        secao = Secao(area, "Agentes jogados",
+                      "Clique nas fotos para marcar os agentes e ajuste quantas partidas jogou com cada um. "
+                      "Se o total de partidas estiver vazio, ele é preenchido com a soma.")
+        secao.pack(fill="x", pady=10)
+        self._campos["agentes"] = SeletorAgentes(secao.conteudo, carregar_agentes())
+        self._campos["agentes"].pack(anchor="w", fill="x")
 
         secao = Secao(area, "Autoavaliação")
         secao.pack(fill="x", pady=10)
@@ -261,6 +273,13 @@ class TelaRegistro(TelaBase):
 
     def _tem_alteracoes(self) -> bool:
         return self._carregado and self._ler() != self._base
+
+    def _atualizar_refeicoes(self) -> None:
+        """Habilita horário e descrição só das refeições marcadas."""
+        for chave, _ in REFEICOES:
+            ativa = self._campos[f"{chave}_realizada"].get()
+            self._campos[f"{chave}_horario"].habilitar(ativa)
+            self._campos[f"{chave}_descricao"].habilitar(ativa)
 
     def _atualizar_horas_auto(self) -> None:
         try:

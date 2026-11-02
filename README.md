@@ -19,6 +19,8 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | | Funcionalidade | Status |
 |---|---|---|
 | 📝 | **Registro diário** em abas (Rotina / Valorant / Anotações), com notas de 1 a 10 por clique | ✅ |
+| 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
+| 🎭 | **Agentes por imagem**, com o número de partidas jogadas com cada um | ✅ |
 | 🧮 | Cálculo automático de horas de sono, K/D, KDA e winrate | ✅ |
 | 💾 | **Rascunho automático**: nada se perde se o app fechar antes de salvar | ✅ |
 | 📚 | **Histórico** com filtros por classificação, período e busca nas anotações | ✅ |
@@ -83,7 +85,7 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
 
 ```json
 {
-  "versao_schema": 1,
+  "versao_schema": 2,
   "ano": 2026,
   "semana": 45,
   "periodo": { "inicio": "2026-11-02", "fim": "2026-11-08" },
@@ -95,9 +97,9 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
       "rotina": {
         "sono": { "dormiu_as": "23:30", "acordou_as": "07:45", "horas": 8.25, "qualidade": 8 },
         "alimentacao": {
-          "cafe_da_manha": { "horario": "08:00", "descricao": "Pão e ovos" },
-          "almoco": { "horario": "12:30", "descricao": "Arroz, feijão e frango" },
-          "jantar": { "horario": null, "descricao": null },
+          "cafe_da_manha": { "realizada": true, "horario": "08:00", "descricao": "Pão e ovos" },
+          "almoco": { "realizada": true, "horario": "12:30", "descricao": "Arroz, feijão e frango" },
+          "jantar": { "realizada": null, "horario": null, "descricao": null },
           "outros": null
         },
         "agua_litros": 2.5,
@@ -115,7 +117,7 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
         "partidas": 4, "vitorias": 3, "derrotas": 1, "empates": null,
         "abates": 72, "mortes": 55, "assistencias": 20,
         "acs": 245, "adr": 158.4, "hs_pct": 27.5,
-        "agentes": ["Jett", "Raze"],
+        "agentes": [{ "nome": "Jett", "partidas": 3 }, { "nome": "Raze", "partidas": 1 }],
         "avaliacao": { "mira": 9, "movimentacao": 8, "tomada_decisao": 7, "concentracao": 8, "consistencia": 7 },
         "notas": "Consegui fazer microajustes com facilidade.",
         "derivados": { "kd": 1.31, "kda": 1.67, "kda_texto": "72/55/20", "winrate_pct": 75.0 }
@@ -129,6 +131,26 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
 
 - **K/D/A** são os totais somados do dia. **ACS, ADR e HS%** são médias por partida.
 - O bloco `derivados` é calculado automaticamente, nunca digitado.
+- Refeições: `"realizada": true` quando a caixa foi marcada; `null` quando não (não teve ou não registrou).
+
+### Versões do formato
+
+O campo `versao_schema` indica o formato do arquivo. Quando o formato muda, o app **converte arquivos antigos automaticamente ao ler** (veja `app/storage/migracoes.py`). O arquivo em disco só é atualizado quando aquela semana for salva de novo, e a versão anterior fica guardada em `_backups/`.
+
+| Versão | Mudança |
+|---|---|
+| 1 | Formato inicial |
+| 2 | Refeições ganham `realizada`; `agentes` passa de lista de nomes para `{nome, partidas}` |
+
+## Imagens dos agentes
+
+Os ícones ficam em `assets/agentes/` e são baixados da [valorant-api.com](https://valorant-api.com) (API pública da comunidade). O app **não acessa a internet**: só lê essa pasta. Quando um agente novo for lançado:
+
+```powershell
+python scripts/baixar_agentes.py
+```
+
+> ValDiary não é endossado pela Riot Games e não reflete as opiniões da Riot Games nem de ninguém oficialmente envolvido na produção ou gestão de propriedades da Riot Games. Riot Games e todas as propriedades associadas são marcas registradas da Riot Games, Inc.
 
 ---
 
@@ -159,6 +181,8 @@ app/
 └── ui/                  interface CustomTkinter
     ├── componentes/     widgets reutilizáveis (seletor de nota, listas...)
     └── telas/           uma tela por arquivo
+assets/agentes/          ícones dos agentes + catálogo (gerados por scripts/baixar_agentes.py)
+scripts/                 utilitários de desenvolvimento
 tests/                   testes automáticos (pytest)
 ```
 
@@ -166,4 +190,4 @@ A interface nunca lê ou grava arquivos diretamente: tudo passa pelo `storage`. 
 
 ## Tecnologias
 
-Python · CustomTkinter · pandas · Matplotlib · pytest
+Python · CustomTkinter · pandas · Matplotlib · Pillow · pytest

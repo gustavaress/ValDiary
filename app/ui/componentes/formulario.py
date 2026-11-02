@@ -4,6 +4,7 @@ import customtkinter as ctk
 
 from app.ui import tema
 from app.ui.componentes.seletor import SeletorNota
+from app.ui.componentes.seletor_hora import SeletorHora
 
 
 def _rotulo(master, texto: str) -> ctk.CTkLabel:
@@ -42,12 +43,61 @@ class CampoEntrada(ctk.CTkFrame):
         return self.entrada.get().strip()
 
     def set(self, valor: str | None) -> None:
+        # Um campo desabilitado não aceita texto; liberamos só durante a troca.
+        estado = self.entrada.cget("state")
+        self.entrada.configure(state="normal")
         self.entrada.delete(0, "end")
         if valor:
             self.entrada.insert(0, valor)
+        self.entrada.configure(state=estado)
 
     def ao_digitar(self, callback) -> None:
         self.entrada.bind("<KeyRelease>", lambda _: callback(), add="+")
+
+    def habilitar(self, ativo: bool) -> None:
+        self.entrada.configure(state="normal" if ativo else "disabled",
+                               text_color=tema.COR_TEXTO if ativo else tema.COR_TEXTO_SECUNDARIO)
+
+
+class CampoHorario(ctk.CTkFrame):
+    def __init__(self, master, rotulo: str, ao_mudar=None):
+        super().__init__(master, fg_color="transparent")
+        _rotulo(self, rotulo).pack(anchor="w")
+        self.seletor = SeletorHora(self, ao_mudar=ao_mudar)
+        self.seletor.pack(anchor="w")
+
+    def get(self) -> str:
+        return self.seletor.get()
+
+    def set(self, valor: str | None) -> None:
+        self.seletor.set(valor)
+
+    def habilitar(self, ativo: bool) -> None:
+        self.seletor.habilitar(ativo)
+
+
+class CampoMarcacao(ctk.CTkFrame):
+    """Caixa de marcação com get() -> bool, no mesmo padrão dos outros campos.
+
+    Envolve um CTkCheckBox em vez de herdar dele: o CTkCheckBox já tem um
+    método set() interno com outra assinatura, que não podemos sobrescrever.
+    """
+
+    def __init__(self, master, rotulo: str, ao_mudar=None):
+        super().__init__(master, fg_color="transparent")
+        self._ao_mudar = ao_mudar
+        self.caixa = ctk.CTkCheckBox(self, text=rotulo, font=tema.fonte_normal(), text_color=tema.COR_TEXTO,
+                                     fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
+                                     border_color=tema.COR_BORDA, command=ao_mudar)
+        self.caixa.pack(anchor="w")
+
+    def get(self) -> bool:
+        return bool(self.caixa.get())
+
+    def set(self, valor: bool | None) -> None:
+        self.caixa.select() if valor else self.caixa.deselect()
+        if self._ao_mudar:
+            self._ao_mudar()
 
 
 class CampoNota(ctk.CTkFrame):
