@@ -1,0 +1,79 @@
+"""Conversão dos registros para um DataFrame do pandas (uma linha por dia).
+
+É a base de todas as análises: cada métrica de metricas.py vira uma coluna
+numérica, e campos não registrados viram NaN (ignorados nas médias).
+"""
+
+from datetime import date, timedelta
+
+import pandas as pd
+
+from app.analysis.metricas import METRICAS
+from app.models import RegistroDia
+
+# Classificação como número, para ordenar e correlacionar (5 = excelente).
+CLASSIFICACAO_NOTA = {"pessimo": 1, "ruim": 2, "normal": 3, "bom": 4, "excelente": 5}
+
+
+def hora_decimal(hhmm: str | None, noturno: bool = False) -> float | None:
+    """ "19:30" -> 19.5.
+
+    noturno=True trata a madrugada como continuação da noite: "01:30" -> 25.5.
+    Assim a média de 23:30 e 00:30 dá 24.0 (meia-noite), e não 12.0 (meio-dia).
+    """
+    if not hhmm:
+        return None
+    horas, minutos = hhmm.split(":")
+    valor = int(horas) + int(minutos) / 60
+    if noturno and valor < 12:
+        valor += 24
+    return valor
+
+
+def registros_para_dataframe(registros: list[RegistroDia]) -> pd.DataFrame:
+    linhas = []
+    for registro in registros:
+        rotina, jogo = registro.rotina, registro.valorant
+        avaliacao = jogo.avaliacao
+        classificacao = registro.classificacao.value if registro.classificacao else None
+        linhas.append({
+            "data": registro.data,
+            "classificacao": classificacao,
+            "classificacao_nota": CLASSIFICACAO_NOTA.get(classificacao),
+            "sono_horas": rotina.sono.horas_efetivas,
+            "sono_qualidade": rotina.sono.qualidade,
+            "horario_dormir": hora_decimal(rotina.sono.dormiu_as, noturno=True),
+            "agua_litros": rotina.agua_litros,
+            "bebidas_qtd": len(rotina.bebidas),
+            "disposicao_fisica": rotina.disposicao_fisica,
+            "disposicao_mental": rotina.disposicao_mental,
+            "estresse": rotina.estresse,
+            "inicio_jogo": hora_decimal(jogo.horario_inicio),
+            "partidas": jogo.partidas,
+            "winrate_pct": jogo.winrate_pct,
+            "kd": jogo.kd,
+            "kda": jogo.kda,
+            "acs": jogo.acs,
+            "adr": jogo.adr,
+            "hs_pct": jogo.hs_pct,
+            "mira": avaliacao.mira,
+            "movimentacao": avaliacao.movimentacao,
+            "tomada_decisao": avaliacao.tomada_decisao,
+            "concentracao": avaliacao.concentracao,
+            "consistencia": avaliacao.consistencia,
+        })
+
+    colunas_metricas = [m.chave for m in METRICAS]
+    df = pd.DataFrame(linhas, columns=["data", "classificacao", "classificacao_nota", *colunas_metricas])
+    df["data"] = pd.to_datetime(df["data"])
+    df[["classificacao_nota", *colunas_metricas]] = df[["classificacao_nota", *colunas_metricas]].astype("float64")
+    return df.sort_values("data").reset_index(drop=True)
+
+
+def filtrar_periodo(df: pd.DataFrame, ultimos_dias: int | None, hoje: date | None = None) -> pd.DataFrame:
+    """Mantém só os últimos N dias (contando hoje). None = todo o período."""
+    if ultimos_dias is None:
+        return df
+    hoje = hoje or date.today()
+    inicio = pd.Timestamp(hoje - timedelta(days=ultimos_dias - 1))
+    return df[df["data"] >= inicio]
