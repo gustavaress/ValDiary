@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from app.models import RegistroDia
 
 
-def _normalizar(texto: str) -> str:
+def normalizar_texto(texto: str) -> str:
     """Minúsculas e sem acentos: "Ansioso" e "ansiôso" combinam."""
     sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     return sem_acento.lower()
@@ -20,7 +20,7 @@ def texto_pesquisavel(registro: RegistroDia) -> str:
         rotina.alimentacao.cafe_da_manha.descricao, rotina.alimentacao.almoco.descricao,
         rotina.alimentacao.jantar.descricao, " ".join(registro.valorant.agentes),
     ]
-    return _normalizar(" ".join(p for p in partes if p))
+    return normalizar_texto(" ".join(p for p in partes if p))
 
 
 def filtrar(
@@ -32,7 +32,7 @@ def filtrar(
 ) -> list[RegistroDia]:
     """Aplica os filtros e devolve do mais recente para o mais antigo."""
     hoje = hoje or date.today()
-    termo = _normalizar(busca.strip())
+    termo = normalizar_texto(busca.strip())
     resultado = []
     for registro in registros:
         if classificacao and registro.classificacao != classificacao:

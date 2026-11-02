@@ -23,9 +23,9 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | 💾 | **Rascunho automático**: nada se perde se o app fechar antes de salvar | ✅ |
 | 📚 | **Histórico** com filtros por classificação, período e busca nas anotações | ✅ |
 | 🏠 | **Tela inicial** com resumo da semana comparado à semana anterior | ✅ |
-| 📤 | Exportar / importar semanas em JSON (inclusive pacote para o ChatGPT) | 🔜 |
-| 📈 | Dashboard com gráficos de evolução | 🔜 |
-| ⚖️ | Comparação entre dias bons e ruins, com correlações | 🔜 |
+| 📤 | Exportar / importar semanas em JSON, com legenda e prompt pronto para o ChatGPT | ✅ |
+| 📈 | Dashboard com evolução no tempo, média móvel e média por tipo de dia | ✅ |
+| ⚖️ | Comparação entre dias bons e ruins, correlações e hábitos frequentes | ✅ |
 | 📦 | Executável `.exe` para Windows | 🔜 |
 
 ---
@@ -131,6 +131,21 @@ Campos não preenchidos ficam como `null` ("não registrado" é diferente de zer
 - O bloco `derivados` é calculado automaticamente, nunca digitado.
 
 ---
+
+## Como a comparação funciona
+
+- **Dias bons** = Excelente + Bom; **dias ruins** = Ruim + Péssimo. Dias normais ficam de fora.
+- Toda média mostra o **n** (quantos dias têm aquele dado). Com menos de **5 dias** em algum grupo, o app avisa que a diferença pode ser acaso.
+- As **correlações** usam o coeficiente de Spearman entre cada métrica e a classificação do dia (1 = péssimo ... 5 = excelente) e exigem pelo menos **10 dias**.
+- O app fala em **associação**, nunca em causa: dormir mais pode acompanhar dias bons sem ser o motivo deles.
+
+## Analisando no ChatGPT
+
+1. Em **Importar / Exportar**, marque as semanas e clique em **Exportar selecionadas**.
+2. Clique em **Copiar prompt para o ChatGPT**.
+3. No ChatGPT, anexe o arquivo `.json` e cole o prompt.
+
+O arquivo exportado traz um bloco `_legenda` explicando escalas, unidades e o significado de `null`, para a IA não interpretar nada errado.
 
 ## Estrutura do projeto
 

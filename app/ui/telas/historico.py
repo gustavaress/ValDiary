@@ -1,29 +1,29 @@
 """Histórico: tabela de todos os dias com filtros, edição e exclusão."""
 
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 
 import customtkinter as ctk
 
 from app.analysis.filtros import filtrar
 from app.ui import tema
-from app.ui.componentes import SeletorClassificacao
+from app.ui.componentes import SeletorClassificacao, Tabela
 from app.ui.formatacao import data_curta, data_extensa, data_tabela, numero
 from app.ui.telas.base import TelaBase
 
-# (chave, título, largura em pixels)
+# (chave, título, largura em pixels, alinhamento)
 COLUNAS = [
-    ("data", "Data", 120),
-    ("classificacao", "Dia", 90),
-    ("sono", "Sono", 60),
-    ("partidas", "Partidas", 70),
-    ("resultado", "V / D", 70),
-    ("kda", "K / D / A", 100),
-    ("kd", "K/D", 60),
-    ("acs", "ACS", 60),
-    ("adr", "ADR", 60),
-    ("hs", "HS%", 60),
-    ("mira", "Mira", 50),
-    ("concentracao", "Conc.", 50),
+    ("data", "Data", 120, "w"),
+    ("classificacao", "Dia", 90, "w"),
+    ("sono", "Sono", 60, "center"),
+    ("partidas", "Partidas", 70, "center"),
+    ("resultado", "V / D", 70, "center"),
+    ("kda", "K / D / A", 100, "center"),
+    ("kd", "K/D", 60, "center"),
+    ("acs", "ACS", 60, "center"),
+    ("adr", "ADR", 60, "center"),
+    ("hs", "HS%", 60, "center"),
+    ("mira", "Mira", 50, "center"),
+    ("concentracao", "Conc.", 50, "center"),
 ]
 
 PERIODOS = {
@@ -105,37 +105,10 @@ class TelaHistorico(TelaBase):
         moldura = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=12,
                                border_width=1, border_color=tema.COR_BORDA)
         moldura.grid(row=1, column=0, sticky="nsew")
-        moldura.grid_columnconfigure(0, weight=1)
-        moldura.grid_rowconfigure(0, weight=1)
 
-        # A tabela usa o Treeview do Tkinter (o CustomTkinter não tem tabela própria).
-        # Ele aguenta milhares de linhas sem ficar lento; só precisamos estilizá-lo.
-        escala = ctk.ScalingTracker.get_widget_scaling(self)
-        estilo = ttk.Style(self)
-        estilo.theme_use("clam")
-        estilo.configure("Diario.Treeview", background=tema.COR_CARTAO, fieldbackground=tema.COR_CARTAO,
-                         foreground=tema.COR_TEXTO, borderwidth=0, rowheight=int(30 * escala),
-                         font=("Segoe UI", 10))
-        estilo.configure("Diario.Treeview.Heading", background=tema.COR_MENU,
-                         foreground=tema.COR_TEXTO_SECUNDARIO, borderwidth=0, relief="flat",
-                         font=("Segoe UI", 10, "bold"), padding=(4, int(6 * escala)))
-        estilo.map("Diario.Treeview", background=[("selected", tema.COR_BORDA)],
-                   foreground=[("selected", tema.COR_TEXTO)])
-        estilo.map("Diario.Treeview.Heading", background=[("active", tema.COR_CARTAO_HOVER)])
-        estilo.layout("Diario.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
-
-        self._tabela = ttk.Treeview(moldura, style="Diario.Treeview", show="headings",
-                                    columns=[c for c, _, _ in COLUNAS], selectmode="browse")
-        for chave, titulo, largura in COLUNAS:
-            alinhamento = "w" if chave in ("data", "classificacao") else "center"
-            self._tabela.heading(chave, text=titulo, anchor=alinhamento)
-            self._tabela.column(chave, width=int(largura * escala), minwidth=40, anchor=alinhamento)
-        self._tabela.tag_configure("par", background=tema.COR_CARTAO_HOVER)
-        self._tabela.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=8)
-
-        barra_rolagem = ctk.CTkScrollbar(moldura, command=self._tabela.yview)
-        barra_rolagem.grid(row=0, column=1, sticky="ns", padx=4, pady=8)
-        self._tabela.configure(yscrollcommand=barra_rolagem.set)
+        self._componente_tabela = Tabela(moldura, COLUNAS)
+        self._componente_tabela.pack(fill="both", expand=True, padx=8, pady=8)
+        self._tabela = self._componente_tabela.arvore
 
         self._tabela.bind("<<TreeviewSelect>>", lambda _: self._mostrar_detalhe())
         self._tabela.bind("<Double-1>", lambda _: self._editar())
@@ -185,13 +158,8 @@ class TelaHistorico(TelaBase):
         )
 
         selecionado = self._tabela.selection()
-        self._tabela.delete(*self._tabela.get_children())
-        self._visiveis = {}
-        for i, registro in enumerate(filtrados):
-            iid = registro.data.isoformat()
-            self._tabela.insert("", "end", iid=iid, values=_valores_linha(registro),
-                                tags=("par",) if i % 2 else ())
-            self._visiveis[iid] = registro
+        self._visiveis = {r.data.isoformat(): r for r in filtrados}
+        self._componente_tabela.preencher([_valores_linha(r) for r in filtrados], ids=list(self._visiveis))
         if selecionado and selecionado[0] in self._visiveis:
             self._tabela.selection_set(selecionado[0])
 

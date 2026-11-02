@@ -97,6 +97,9 @@ class Grafico(ctk.CTkFrame):
         self._pontos = pontos
         self._so_eixo_x = so_eixo_x
 
+    def definir_altura(self, altura: int) -> None:
+        self._area_mpl.get_tk_widget().configure(height=altura)
+
     def desenhar(self) -> None:
         self._area_mpl.draw_idle()
 
