@@ -117,7 +117,7 @@ class TelaComparacao(TelaBase):
     def _atualizar(self) -> None:
         dias = PERIODOS[self._menu_periodo.get()]
         registros = filtrar(self._registros, ultimos_dias=dias)
-        df = filtrar_periodo(registros_para_dataframe(registros), dias)
+        df = filtrar_periodo(registros_para_dataframe(registros, self.janela.rr_por_dia(self._registros)), dias)
         bons, ruins = separar_grupos(df)
         n_bons, n_ruins = len(bons), len(ruins)
 

@@ -35,7 +35,7 @@ PERIODOS = {
 }
 
 
-def _valores_linha(registro) -> tuple:
+def _valores_linha(registro, rr_do_dia: int | None) -> tuple:
     rotina, jogo = registro.rotina, registro.valorant.resumo
     avaliacao = registro.valorant.avaliacao
     classificacao = registro.classificacao
@@ -54,7 +54,7 @@ def _valores_linha(registro) -> tuple:
         numero(jogo.kd),
         numero(jogo.acs, 0),
         numero(jogo.hs_pct, 1),
-        f"{jogo.rr:+d}" if jogo.rr is not None else "—",
+        f"{rr_do_dia:+d}" if rr_do_dia is not None else "—",
         numero(avaliacao.mira),
         numero(avaliacao.concentracao),
     )
@@ -146,6 +146,7 @@ class TelaHistorico(TelaBase):
 
     def ao_exibir(self) -> None:
         self._registros, _ = self.repositorio.carregar_todos()
+        self._rr_por_dia = self.janela.rr_por_dia(self._registros)
         self._atualizar_tabela()
 
     def _atualizar_tabela(self) -> None:
@@ -158,7 +159,7 @@ class TelaHistorico(TelaBase):
 
         selecionado = self._tabela.selection()
         self._visiveis = {r.data.isoformat(): r for r in filtrados}
-        self._componente_tabela.preencher([_valores_linha(r) for r in filtrados], ids=list(self._visiveis))
+        self._componente_tabela.preencher([_valores_linha(r, self._rr_por_dia.get(r.data)) for r in filtrados], ids=list(self._visiveis))
         if selecionado and selecionado[0] in self._visiveis:
             self._tabela.selection_set(selecionado[0])
 

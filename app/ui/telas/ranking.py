@@ -89,7 +89,7 @@ class TelaRanking(TelaBase):
             self._rr.set(str(atual.rr))
 
         limite = date.today().toordinal() - 6
-        rr_recente = [e.rr for e in evolucao if e.rr is not None and e.data.toordinal() >= limite]
+        rr_recente = [e.variacao for e in evolucao if e.variacao is not None and e.data.toordinal() >= limite]
         self._cartao_semana.atualizar(f"{sum(rr_recente):+d} RR" if rr_recente else "—",
                                       f"em {len(rr_recente)} dia(s) com RR registrado")
 
@@ -101,7 +101,7 @@ class TelaRanking(TelaBase):
 
         self._tabela_evolucao.preencher([
             (("★ " if e.redefinido else "") + data_tabela(e.data), e.inicio.texto,
-             f"{e.rr:+d}" if e.rr is not None else "—", e.final.texto)
+             f"{e.variacao:+d}" if e.variacao is not None else "—", e.final.texto)
             for e in reversed(evolucao)
         ])
         self._definicoes = definicoes

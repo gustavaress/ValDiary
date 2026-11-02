@@ -130,3 +130,15 @@ def test_pacote_inclui_ranking_dos_dias_exportados(origem, tmp_path):
     evolucao = {e["data"]: e for e in pacote["ranking"]["evolucao_por_dia"]}
     assert set(evolucao) == {"2026-11-02", "2026-11-03"}   # o dia 10 (semana 46) não foi exportado
     assert evolucao["2026-11-03"]["fim"] == {"elo": "Ouro 2", "rr": 60}
+
+
+def test_pacote_traz_soma_e_variacao_real_do_rr(origem, tmp_path):
+    from app.models.ranking import DefinicaoRanking
+    dia = origem.obter_dia(date(2026, 11, 2))
+    dia.valorant.partidas = [Partida(rr=-20), Partida(rr=+17)]
+    origem.salvar_dia(dia, sobrescrever=True)
+    definicoes = [DefinicaoRanking(date(2026, 11, 2), "Ascendente 3", 1)]
+
+    pacote = json.loads(exportar(origem, [(2026, 45)], tmp_path / "p.json", definicoes).read_text(encoding="utf-8"))
+    evolucao = {e["data"]: e for e in pacote["ranking"]["evolucao_por_dia"]}["2026-11-02"]
+    assert (evolucao["rr_soma_partidas"], evolucao["rr_variacao_no_ranking"]) == (-3, 16)

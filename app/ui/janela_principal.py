@@ -8,7 +8,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app import config
-from app.analysis.ranking import ranking_atual_com_data
+from app.analysis.ranking import ranking_atual_com_data, rr_por_dia
 from app.storage import ArquivoCorrompidoError, RepositorioDiario
 from app.storage.rascunho import apagar_rascunho, carregar_rascunho
 from app.storage.reorganizacao import reorganizar_se_preciso
@@ -176,6 +176,18 @@ class JanelaPrincipal(ctk.CTk):
 
         for k, item in self._botoes.items():
             item.ativar(k == chave)
+
+    def definicoes_ranking(self) -> list:
+        """Ajustes manuais de ranking (lista vazia se o arquivo estiver com problema;
+        o problema é avisado ao abrir a aba Ranking)."""
+        try:
+            return self.repositorio_ranking.carregar()
+        except ArquivoCorrompidoError:
+            return []
+
+    def rr_por_dia(self, registros) -> dict:
+        """RR do dia a mostrar nas telas: variação real no ranking (com proteção) ou a soma."""
+        return rr_por_dia(registros, self.definicoes_ranking())
 
     def atualizar_ranking_salvo(self) -> RankingSalvo | None:
         """Recalcula o ranking ao fim do último dia registrado e grava em ranking.json.

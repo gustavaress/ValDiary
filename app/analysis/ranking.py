@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from app.models import RegistroDia
-from app.models.ranking import DefinicaoRanking, Ranking, aplicar_partidas
+from app.models.ranking import DefinicaoRanking, Ranking, aplicar_partidas, variacao_real
 
 
 @dataclass(frozen=True)
@@ -18,8 +18,15 @@ class RankingDoDia:
     data: date
     inicio: Ranking
     final: Ranking
-    rr: int | None        # soma do RR das partidas do dia
+    rr: int | None        # soma do RR das partidas do dia (sem considerar a proteção)
     redefinido: bool      # uma definição passou a valer neste dia
+
+    @property
+    def variacao(self) -> int | None:
+        """Quanto o ranking realmente mudou no dia (None se nenhuma partida teve RR)."""
+        if self.rr is None:
+            return None
+        return variacao_real(self.inicio, self.final)
 
 
 def variacoes_do_dia(registro: RegistroDia) -> list[int]:
@@ -76,3 +83,17 @@ def ranking_no_inicio_do_dia(data: date, registros: list[RegistroDia],
     """Ranking ao começar `data`, considerando só os dias anteriores a ela."""
     anteriores = [r for r in registros if r.data < data]
     return ranking_atual(anteriores, [d for d in definicoes if d.data <= data])
+
+
+def rr_por_dia(registros: list[RegistroDia], definicoes: list[DefinicaoRanking]) -> dict[date, int]:
+    """RR do dia que deve ser mostrado em todo o app: {data: valor}.
+
+    Com o ranking definido, é a variação REAL no ranking (com a proteção contra
+    rebaixamento). Dias sem ranking calculável (antes da primeira definição, ou
+    sem definição nenhuma) usam a soma do RR das partidas.
+    """
+    resultado = {r.data: r.valorant.resumo.rr for r in registros if r.valorant.resumo.rr is not None}
+    for dia in evolucao_ranking(registros, definicoes):
+        if dia.variacao is not None:
+            resultado[dia.data] = dia.variacao
+    return resultado

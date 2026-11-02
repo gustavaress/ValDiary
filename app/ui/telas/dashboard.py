@@ -62,7 +62,7 @@ class TelaDashboard(TelaBase):
 
     def ao_exibir(self) -> None:
         registros, _ = self.repositorio.carregar_todos()
-        self._df = registros_para_dataframe(registros)
+        self._df = registros_para_dataframe(registros, self.janela.rr_por_dia(registros))
         self._atualizar()
 
     def _atualizar(self) -> None:

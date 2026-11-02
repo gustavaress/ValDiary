@@ -15,7 +15,7 @@ import customtkinter as ctk
 from app.analysis.ranking import ranking_no_inicio_do_dia
 from app.models import RegistroDia, calcular_horas_sono, validar_registro
 from app.models.datas import data_livre_mais_recente, erro_data_nova, proxima_data_livre
-from app.models.ranking import Ranking, aplicar_partidas
+from app.models.ranking import Ranking, aplicar_partidas, variacao_real
 from app.storage import ArquivoCorrompidoError, RegistroDuplicadoError, VersaoIncompativelError
 from app.storage.rascunho import apagar_rascunho, salvar_rascunho
 from app.ui import conversao, tema
@@ -352,9 +352,10 @@ class TelaRegistro(TelaBase):
 
     def _texto_ranking(self, formulario: dict, rr_do_dia: int | None) -> str:
         """Duas linhas:
-        "RR das partidas: -20, +17 (soma -3)"
-        "Ranking: Ascendente 3 · 1 RR  →  Ascendente 3 · 17 RR"
-        A soma pode diferir da mudança no ranking por causa da proteção contra rebaixamento.
+        "RR das partidas: -20, +17"
+        "Ranking: Ascendente 3 · 1 RR  →  Ascendente 3 · 17 RR  (+16 RR)"
+        A variação no ranking pode diferir da soma das partidas por causa da
+        proteção contra rebaixamento (no exemplo, a soma seria -3).
         """
         variacoes = []
         for partida in formulario.get("partidas") or []:
@@ -366,10 +367,14 @@ class TelaRegistro(TelaBase):
                 variacoes.append(rr)
         linhas = []
         if variacoes:
-            linhas.append(f"RR das partidas: {', '.join(f'{v:+d}' for v in variacoes)}  (soma {rr_do_dia:+d})")
+            partidas = ", ".join(f"{v:+d}" for v in variacoes)
+            # Sem ranking definido não dá para aplicar a proteção: mostramos a soma.
+            sufixo = "" if self._ranking_inicio is not None else f"  (soma {rr_do_dia:+d})"
+            linhas.append(f"RR das partidas: {partidas}{sufixo}")
         if self._ranking_inicio is not None:
             final = aplicar_partidas(self._ranking_inicio, variacoes)
-            linhas.append(f"Ranking: {self._ranking_inicio.texto}  →  {final.texto}")
+            ganho = f"  ({variacao_real(self._ranking_inicio, final):+d} RR)" if variacoes else ""
+            linhas.append(f"Ranking: {self._ranking_inicio.texto}  →  {final.texto}{ganho}")
         return "\n".join(linhas)
 
     def _calcular_ranking_inicio(self) -> None:

@@ -33,9 +33,12 @@ LEGENDA = {
                 "em quantas partidas cada agente foi jogado. Dias antigos podem ter só 'legado' "
                 "(totais do dia digitados antes do registro por partida), sem a lista de partidas.",
     "ranking": "Cada partida tem 'rr' = pontos de ranking ganhos (+) ou perdidos (-); 'resumo.rr' é a "
-               "soma do dia. O bloco 'ranking' no topo traz as definições feitas pelo jogador (elo e RR "
-               "a partir de uma data) e a evolução calculada por dia (início, RR do dia, fim), aplicando "
-               "o RR partida a partida com a proteção contra rebaixamento. É uma estimativa.",
+               "soma simples do dia. O bloco 'ranking' no topo traz as definições feitas pelo jogador (elo "
+               "e RR a partir de uma data) e a evolução por dia, aplicando o RR partida a partida com a "
+               "proteção contra rebaixamento (perder com RR acima de 0 só zera os pontos). Por isso "
+               "'rr_variacao_no_ranking' (quanto o ranking realmente mudou) pode diferir de "
+               "'rr_soma_partidas': ex. 1 RR, -20 e +17 = soma -3, mas variação real +16. "
+               "Use a variação real para avaliar o progresso. É uma estimativa.",
     "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",
@@ -87,7 +90,8 @@ def montar_pacote(repositorio: RepositorioDiario, semanas: list[tuple[int, int]]
         pacote["ranking"] = {
             "definicoes": [d.to_dict() for d in definicoes_ranking],
             "evolucao_por_dia": [
-                {"data": e.data.isoformat(), "inicio": asdict(e.inicio), "rr_do_dia": e.rr,
+                {"data": e.data.isoformat(), "inicio": asdict(e.inicio), "rr_soma_partidas": e.rr,
+                 "rr_variacao_no_ranking": e.variacao,
                  "fim": asdict(e.final)}
                 for e in evolucao if e.data.isoformat() in datas
             ],

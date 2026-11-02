@@ -110,7 +110,9 @@ class TelaInicio(TelaBase):
         if ranking is None:
             self._ranking.atualizar("—", "defina seu elo na aba Ranking")
         else:
-            rr_semana = resumir(da_semana).rr
+            rr_dias = self.janela.rr_por_dia(registros)
+            rr_da_semana = [rr_dias[r.data] for r in da_semana if r.data in rr_dias]
+            rr_semana = sum(rr_da_semana) if rr_da_semana else None
             detalhe = f"{ranking.rr} RR"
             if rr_semana is not None:
                 detalhe += f"  ·  {rr_semana:+d} RR nesta semana"

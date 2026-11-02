@@ -75,6 +75,20 @@ def aplicar_partida(atual: Ranking, variacao: int) -> Ranking:
     return Ranking(atual.elo, rr)
 
 
+def pontos_totais(ranking: Ranking) -> int:
+    """Posição do ranking numa escala única: cada elo vale 100 pontos (Ferro 1 · 0 RR = 0)."""
+    return ELOS.index(ranking.elo) * RR_POR_DIVISAO + ranking.rr
+
+
+def variacao_real(inicio: Ranking, final: Ranking) -> int:
+    """Quanto o jogador realmente andou no ranking (considera promoção, rebaixamento e proteção).
+
+    Ex.: Ascendente 3 · 1 RR -> Ascendente 3 · 17 RR = +16, mesmo que as partidas
+    tenham somado -20 + 17 = -3 (a proteção só deixou perder 1 ponto).
+    """
+    return pontos_totais(final) - pontos_totais(inicio)
+
+
 def aplicar_partidas(inicio: Ranking, variacoes: list[int]) -> Ranking:
     atual = inicio
     for variacao in variacoes:

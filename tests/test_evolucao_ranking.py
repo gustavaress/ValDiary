@@ -103,3 +103,25 @@ def test_ranking_salvo_e_preservado_ao_mexer_nas_definicoes(tmp_path):
     repo.definir(date(2026, 11, 9), "Imortal 1", 30)  # ajuste não apaga o ranking salvo
     assert repo.carregar_atual() == salvo
     assert [d.data.day for d in repo.carregar()] == [1, 9]
+
+
+def test_variacao_real_considera_a_protecao():
+    # Ascendente 3 com 1 RR: -20 (zera, perde só 1) e +17 -> +16 no ranking, e não -3.
+    evolucao = evolucao_ranking([_dia(2, -20, +17)], [DEFINICAO])
+    assert evolucao[0].rr == -3
+    assert evolucao[0].variacao == 16
+
+
+def test_variacao_real_atravessa_promocao_e_rebaixamento():
+    from app.models.ranking import variacao_real
+    assert variacao_real(Ranking("Ouro 2", 85), Ranking("Ouro 3", 23)) == 38
+    assert variacao_real(Ranking("Ouro 2", 0), Ranking("Ouro 1", 80)) == -20
+    assert variacao_real(Ranking("Ascendente 3", 95), Ranking("Imortal 1", 15)) == 20
+
+
+def test_rr_por_dia_usa_a_variacao_real_e_cai_para_a_soma_sem_ranking():
+    from app.analysis.ranking import rr_por_dia
+    registros = [_dia(1, +10, -5), _dia(2, -20, +17), _dia(3)]
+    # Dia 1 é anterior à definição: soma (+5). Dia 2: variação real (+16). Dia 3: sem RR.
+    assert rr_por_dia(registros, [DEFINICAO]) == {date(2026, 11, 1): 5, date(2026, 11, 2): 16}
+    assert rr_por_dia(registros, []) == {date(2026, 11, 1): 5, date(2026, 11, 2): -3}

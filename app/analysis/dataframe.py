@@ -30,7 +30,9 @@ def hora_decimal(hhmm: str | None, noturno: bool = False) -> float | None:
     return valor
 
 
-def registros_para_dataframe(registros: list[RegistroDia]) -> pd.DataFrame:
+def registros_para_dataframe(registros: list[RegistroDia], rr_por_dia: dict | None = None) -> pd.DataFrame:
+    """rr_por_dia: RR de cada dia já considerando a proteção contra rebaixamento
+    (ver analysis/ranking.rr_por_dia). Sem ele, usa a soma do RR das partidas."""
     linhas = []
     for registro in registros:
         rotina, jogo = registro.rotina, registro.valorant
@@ -56,7 +58,7 @@ def registros_para_dataframe(registros: list[RegistroDia]) -> pd.DataFrame:
             "kda": resumo.kda,
             "acs": resumo.acs,
             "hs_pct": resumo.hs_pct,
-            "rr": resumo.rr,
+            "rr": rr_por_dia.get(registro.data) if rr_por_dia is not None else resumo.rr,
             "mira": avaliacao.mira,
             "movimentacao": avaliacao.movimentacao,
             "tomada_decisao": avaliacao.tomada_decisao,
