@@ -5,6 +5,7 @@ import customtkinter as ctk
 from app.models.ranking import aplicar_partidas, variacao_real
 from app.ui import conversao, tema
 from app.ui.componentes import CampoTextoLongo, ListaPartidas, Secao, SeletorBotoes
+from app.ui.componentes.emblema_rank import imagem_rank
 from app.ui.formatacao import numero
 from app.ui.mapeamento_registro import resumo_ao_vivo
 
@@ -29,9 +30,15 @@ class AbaPartidas:
         secao = Secao(area, "Resumo do dia", "Calculado automaticamente a partir das partidas abaixo. "
                                              "O ranking vem da aba Ranking + o RR de cada partida, na ordem.")
         secao.pack(fill="x", pady=10)
-        self.rotulo_ranking = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
-                                           font=tema.fonte_pequena(), text_color=tema.COR_TEXTO_SECUNDARIO)
-        self.rotulo_ranking.pack(anchor="w", pady=(0, 6))
+        # Ranking no início do dia -> ranking com as partidas abaixo, cada um com o emblema.
+        linha = ctk.CTkFrame(secao.conteudo, fg_color="transparent")
+        linha.pack(anchor="w", pady=(0, 8))
+        self.rotulo_ranking = ctk.CTkLabel(linha, text="", justify="left", anchor="w", compound="left",
+                                           font=tema.fonte_normal(), text_color=tema.COR_TEXTO_SECUNDARIO)
+        self.rotulo_ranking.pack(side="left")
+        self.rotulo_ranking_final = ctk.CTkLabel(linha, text="", justify="left", anchor="w", compound="left",
+                                                 font=tema.fonte_forte(), text_color=tema.COR_TEXTO)
+        self.rotulo_ranking_final.pack(side="left", padx=(14, 0))
         self.rotulo_resumo = ctk.CTkLabel(secao.conteudo, text="", justify="left", anchor="w",
                                           font=tema.fonte_normal(), text_color=tema.COR_TEXTO)
         self.rotulo_resumo.pack(anchor="w")
@@ -56,9 +63,10 @@ class AbaPartidas:
         ranking = self._tela.ranking_inicio
         if ranking is None:
             self.rotulo_ranking.configure(
-                text="Ranking não calculado: defina seu elo e RR na aba Ranking (menu ao lado).")
+                text="Ranking não calculado: defina seu elo e RR na aba Ranking (menu ao lado).", image=None)
         else:
-            self.rotulo_ranking.configure(text=f"Ranking ao começar o dia: {ranking.texto}")
+            self.rotulo_ranking.configure(text=f"  Início do dia: {ranking.texto}",
+                                          image=imagem_rank(ranking.elo, 36))
 
     def _atualizar_resumo(self) -> None:
         formulario = self._tela.ler()
@@ -98,9 +106,9 @@ class AbaPartidas:
             self._rotulo_legado.configure(text="")
 
     def _texto_ranking(self, formulario: dict, rr_do_dia: int | None) -> str:
-        """Duas linhas:
-        "RR das partidas: -20, +17"
-        "Ranking: Ascendente 3 · 1 RR  →  Ascendente 3 · 17 RR  (+16 RR)"
+        """Devolve "RR das partidas: -20, +17" e mostra, ao lado do ranking do
+        início do dia, o ranking com essas partidas:
+        "→  Ascendente 3 · 17 RR  (+16 RR)"
         A variação no ranking pode diferir da soma das partidas por causa da
         proteção contra rebaixamento (no exemplo, a soma seria -3).
         """
@@ -114,13 +122,18 @@ class AbaPartidas:
                 variacoes.append(rr)
         inicio = self._tela.ranking_inicio
         linhas = []
+        self.rotulo_ranking_final.configure(text="", image=None)
         if variacoes:
             partidas = ", ".join(f"{v:+d}" for v in variacoes)
             # Sem ranking definido não dá para aplicar a proteção: mostramos a soma.
             sufixo = "" if inicio is not None else f"  (soma {rr_do_dia:+d})"
             linhas.append(f"RR das partidas: {partidas}{sufixo}")
-        if inicio is not None:
+        if inicio is not None and variacoes:
             final = aplicar_partidas(inicio, variacoes)
-            ganho = f"  ({variacao_real(inicio, final):+d} RR)" if variacoes else ""
-            linhas.append(f"Ranking: {inicio.texto}  →  {final.texto}{ganho}")
+            self.rotulo_ranking_final.configure(
+                text=f"  {final.texto}  ({variacao_real(inicio, final):+d} RR)",
+                image=imagem_rank(final.elo, 36))
+            self.rotulo_ranking.configure(text=f"  Início do dia: {inicio.texto}   →")
+        elif inicio is not None:
+            self.rotulo_ranking.configure(text=f"  Início do dia: {inicio.texto}")
         return "\n".join(linhas)

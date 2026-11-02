@@ -22,6 +22,15 @@ class CartaoInfo(ctk.CTkFrame):
                                      text_color=tema.COR_TEXTO_SECUNDARIO)
         self._detalhe.pack(anchor="w", padx=18, pady=(0, 14))
 
-    def atualizar(self, valor: str, detalhe: str = "", cor_valor: str = tema.COR_TEXTO) -> None:
+        # Imagem opcional no canto de cima (ex.: emblema do rank), ao lado do título.
+        self._imagem = ctk.CTkLabel(self, text="", fg_color="transparent")
+
+    def atualizar(self, valor: str, detalhe: str = "", cor_valor: str = tema.COR_TEXTO,
+                  imagem: ctk.CTkImage | None = None) -> None:
         self._valor.configure(text=valor, text_color=cor_valor)
         self._detalhe.configure(text=detalhe)
+        if imagem is None:
+            self._imagem.place_forget()
+        else:
+            self._imagem.configure(image=imagem)
+            self._imagem.place(relx=1, x=-12, y=10, anchor="ne")

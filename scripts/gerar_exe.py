@@ -22,6 +22,7 @@ RECURSOS = [
     ("assets/fontes", "assets/fontes"),
     ("assets/icone.ico", "assets"),
     ("assets/agentes/agentes.json", "assets/agentes"),
+    ("assets/ranks", "assets/ranks"),
 ]
 
 

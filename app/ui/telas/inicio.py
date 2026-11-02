@@ -12,6 +12,7 @@ from app.ui import tema
 from app.ui.componentes.botoes import botao_primario
 from app.analysis.insights import gerar_insights
 from app.ui.componentes import CartaoInfo, Secao
+from app.ui.componentes.emblema_rank import imagem_rank
 from app.ui.componentes.formulario import rotulo_quebravel
 from app.ui.formatacao import data_extensa, data_tabela, numero
 from app.ui.telas.base import TelaBase
@@ -125,7 +126,7 @@ class TelaInicio(TelaBase):
             detalhe = f"{ranking.rr} RR"
             if rr_semana is not None:
                 detalhe += f"  ·  {rr_semana:+d} RR nesta semana"
-            self._ranking.atualizar(ranking.elo, detalhe)
+            self._ranking.atualizar(ranking.elo, detalhe, imagem=imagem_rank(ranking.elo, 36))
 
     def _atualizar_semana(self, registros, hoje: date) -> None:
         semana_atual = semana_da_data(hoje)

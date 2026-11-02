@@ -88,7 +88,7 @@ def test_ranking_e_atualizado_ao_salvar(janela):
     janela.repositorio_ranking.definir(HOJE, "Ascendente 3", 1)
     tela = _registro(janela)
     _adicionar_partidas(tela, "-20", "+17")
-    assert "(+16 RR)" in tela.aba_partidas.rotulo_resumo.cget("text")
+    assert "Ascendente 3 · 17 RR  (+16 RR)" in tela.aba_partidas.rotulo_ranking_final.cget("text")
     tela.salvar()
     assert janela.repositorio_ranking.carregar_atual().ranking == Ranking("Ascendente 3", 17)
     assert "Ascendente 3 · 17 RR" in tela.rotulo_status.cget("text")
