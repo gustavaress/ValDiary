@@ -1,15 +1,23 @@
 """Dashboard: evolução de uma métrica no tempo e sua relação com a classificação do dia."""
 
+from datetime import date
+
 import customtkinter as ctk
 import matplotlib.dates as mdates
 import pandas as pd
+from matplotlib.ticker import FuncFormatter
 
 from app.analysis.dataframe import CLASSIFICACAO_NOTA, filtrar_periodo, registros_para_dataframe
+from app.analysis.desempenho import aim_routines_por_semana, desempenho_por, fez_aim_routine
+from app.analysis.filtros import filtrar
 from app.analysis.metricas import METRICAS
+from app.analysis.ranking import evolucao_ranking, rr_por_dia
+from app.models.datas import semana_da_data
+from app.models.ranking import ELOS, RR_POR_DIVISAO, pontos_totais
 from app.ui import tema
-from app.ui.componentes import CartaoInfo
+from app.ui.componentes import CartaoInfo, Secao, Tabela
 from app.ui.componentes.grafico import SERIE_1, Grafico
-from app.ui.formatacao import valor_metrica
+from app.ui.formatacao import numero, valor_metrica
 from app.ui.telas.base import TelaBase
 
 PERIODOS = {"Últimos 30 dias": 30, "Últimos 90 dias": 90, "Todo o período": None}
@@ -22,11 +30,12 @@ ORDEM_CLASSIFICACAO = sorted(CLASSIFICACAO_NOTA, key=CLASSIFICACAO_NOTA.get, rev
 
 class TelaDashboard(TelaBase):
     titulo = "Dashboard"
-    subtitulo = "Evolução do seu desempenho e da sua rotina ao longo do tempo"
+    subtitulo = "Evolução do desempenho, ranking, aim routine, mapas e agentes"
 
     def montar(self) -> None:
         self._metricas = {m.rotulo: m for m in METRICAS}
         self._df = registros_para_dataframe([])
+        self._registros, self._definicoes = [], []
 
         filtros = ctk.CTkFrame(self.corpo, fg_color="transparent")
         filtros.pack(fill="x", pady=(0, 10))
@@ -39,7 +48,7 @@ class TelaDashboard(TelaBase):
         self._menu_periodo = ctk.CTkOptionMenu(filtros, values=list(PERIODOS), width=160, **estilo_menu)
         self._menu_periodo.pack(side="left", padx=(10, 0))
 
-        area = ctk.CTkScrollableFrame(self.corpo, fg_color="transparent")
+        self.area = area = ctk.CTkScrollableFrame(self.corpo, fg_color="transparent")
         area.pack(fill="both", expand=True)
         area.grid_columnconfigure((0, 1, 2), weight=1, uniform="col")
 
@@ -60,9 +69,42 @@ class TelaDashboard(TelaBase):
         self._grafico_distribuicao = Grafico(inferior, "Dias por classificação", altura=240)
         self._grafico_distribuicao.grid(row=0, column=1, sticky="nsew", padx=6, pady=6)
 
+        self._grafico_ranking = Grafico(area, "Ranking ao longo do tempo", altura=260)
+        self._grafico_ranking.grid(row=3, column=0, columnspan=3, sticky="nsew", padx=6, pady=6)
+
+        aim = ctk.CTkFrame(area, fg_color="transparent")
+        aim.grid(row=4, column=0, columnspan=3, sticky="nsew")
+        aim.grid_columnconfigure(1, weight=1)
+        cartoes_aim = ctk.CTkFrame(aim, fg_color="transparent")
+        cartoes_aim.grid(row=0, column=0, sticky="nsew")
+        self._cartao_aim_semana = CartaoInfo(cartoes_aim, "Aim routines nesta semana")
+        self._cartao_aim_semana.pack(fill="x", padx=6, pady=6)
+        self._cartao_aim_periodo = CartaoInfo(cartoes_aim, "Aim routines no período")
+        self._cartao_aim_periodo.pack(fill="x", padx=6, pady=6)
+        self._grafico_aim = Grafico(aim, "Aim routine por semana", altura=230)
+        self._grafico_aim.grid(row=0, column=1, sticky="nsew", padx=6, pady=6)
+
+        tabelas = ctk.CTkFrame(area, fg_color="transparent")
+        tabelas.grid(row=5, column=0, columnspan=3, sticky="nsew")
+        tabelas.grid_columnconfigure((0, 1), weight=1, uniform="metade")
+        colunas = [("nome", "", 110, "w"), ("partidas", "Jogos", 62, "center"), ("winrate", "Winrate", 62, "center"),
+                   ("kd", "K/D", 50, "center"), ("acs", "ACS", 50, "center"), ("hs", "HS%", 50, "center"),
+                   ("rr", "RR/jogo", 72, "center")]
+        self._tabelas_desempenho = {}
+        for coluna, (atributo, titulo) in enumerate((("mapa", "Desempenho por mapa"),
+                                                     ("agente", "Desempenho por agente"))):
+            secao = Secao(tabelas, titulo, "Só partidas com esse dado registrado. Ordenado pelo mais jogado.")
+            secao.grid(row=0, column=coluna, sticky="nsew", padx=6, pady=6)
+            tabela = Tabela(secao.conteudo, [(c, atributo.capitalize() if c == "nome" else t, l, a)
+                                             for c, t, l, a in colunas], altura_automatica=True)
+            tabela.pack(fill="x")
+            self._tabelas_desempenho[atributo] = tabela
+
     def ao_exibir(self) -> None:
         registros, _ = self.repositorio.carregar_todos()
-        self._df = registros_para_dataframe(registros, self.janela.rr_por_dia(registros))
+        self._registros = registros
+        self._definicoes = self.janela.definicoes_ranking()
+        self._df = registros_para_dataframe(registros, rr_por_dia(registros, self._definicoes))
         self._atualizar()
 
     def _atualizar(self) -> None:
@@ -74,6 +116,70 @@ class TelaDashboard(TelaBase):
         self._desenhar_evolucao(metrica, serie)
         self._desenhar_por_classificacao(metrica, df)
         self._desenhar_distribuicao(df)
+
+        registros = filtrar(self._registros, ultimos_dias=PERIODOS[self._menu_periodo.get()])
+        self._desenhar_ranking(registros)
+        self._desenhar_aim(registros)
+        for atributo, tabela in self._tabelas_desempenho.items():
+            tabela.preencher([
+                (l.nome, l.partidas, numero(l.winrate_pct, 0, "%"), numero(l.kd), numero(l.acs, 0),
+                 numero(l.hs_pct, 1, "%"), f"{l.rr_medio:+.1f}".replace(".", ",") if l.rr_medio is not None else "—")
+                for l in desempenho_por(registros, atributo)
+            ])
+
+    def _desenhar_ranking(self, registros) -> None:
+        grafico = self._grafico_ranking
+        grafico.limpar("Ranking ao fim de cada dia (aba Ranking + RR das partidas)")
+        datas_periodo = {r.data for r in registros}
+        evolucao = [e for e in evolucao_ranking(self._registros, self._definicoes) if e.data in datas_periodo]
+        if not evolucao:
+            grafico.mostrar_vazio("Defina seu ranking na aba Ranking e registre o RR das partidas.")
+            return
+
+        eixo = grafico.eixo
+        datas = [pd.Timestamp(e.data) for e in evolucao]
+        pontos = [pontos_totais(e.final) for e in evolucao]
+        eixo.plot(datas, pontos, color=SERIE_1, linewidth=2, marker="o", markersize=6,
+                  markeredgecolor=tema.COR_CARTAO, markeredgewidth=1.5)
+        # Uma linha de grade por elo, com o nome do elo no eixo.
+        menor, maior = min(pontos) // RR_POR_DIVISAO, max(pontos) // RR_POR_DIVISAO + 1
+        eixo.set_yticks([i * RR_POR_DIVISAO for i in range(menor, maior + 1) if i < len(ELOS)])
+        eixo.yaxis.set_major_formatter(FuncFormatter(
+            lambda valor, _: ELOS[int(valor) // RR_POR_DIVISAO] if 0 <= int(valor) // RR_POR_DIVISAO < len(ELOS) else ""))
+        eixo.set_ylim(menor * RR_POR_DIVISAO - 10, maior * RR_POR_DIVISAO + 10)
+        eixo.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=8))
+        eixo.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
+        grafico.definir_dicas([
+            (mdates.date2num(d), p, f"{e.data:%d/%m/%Y}\n{e.final.texto}"
+                                    + (f"\n{e.variacao:+d} RR no dia" if e.variacao is not None else ""))
+            for d, p, e in zip(datas, pontos, evolucao)
+        ], so_eixo_x=True)
+        grafico.desenhar()
+
+    def _desenhar_aim(self, registros) -> None:
+        hoje = date.today()
+        semana_atual = semana_da_data(hoje)
+        na_semana = sum(1 for r in self._registros if r.semana == semana_atual and fez_aim_routine(r))
+        self._cartao_aim_semana.atualizar(f"{na_semana}/7", "dias com aim routine nesta semana")
+        no_periodo = sum(1 for r in registros if fez_aim_routine(r))
+        self._cartao_aim_periodo.atualizar(str(no_periodo), f"em {len(registros)} dia(s) registrados")
+
+        grafico = self._grafico_aim
+        grafico.limpar("Dias com aim routine em cada semana (as últimas 8; a última é a atual)")
+        semanas = aim_routines_por_semana(self._registros, hoje)
+        if not any(n for _, n in semanas):
+            grafico.mostrar_vazio("Nenhuma aim routine registrada nas últimas 8 semanas.")
+            return
+        eixo = grafico.eixo
+        posicoes = range(len(semanas))
+        cores = [tema.COR_BORDA_FORTE] * (len(semanas) - 1) + [SERIE_1]  # destaca a semana atual
+        eixo.bar(posicoes, [n for _, n in semanas], width=0.6, color=cores)
+        eixo.set_xticks(list(posicoes), [rotulo for rotulo, _ in semanas])
+        eixo.set_ylim(0, 7.5)
+        eixo.yaxis.get_major_locator().set_params(integer=True)
+        grafico.definir_dicas([(i, n, f"Semana {rotulo[1:]}: {n} dia(s) com aim routine")
+                               for i, (rotulo, n) in enumerate(semanas)])
+        grafico.desenhar()
 
     # --- Partes -----------------------------------------------------------
 

@@ -39,6 +39,9 @@ LEGENDA = {
                "'rr_variacao_no_ranking' (quanto o ranking realmente mudou) pode diferir de "
                "'rr_soma_partidas': ex. 1 RR, -20 e +17 = soma -3, mas variação real +16. "
                "Use a variação real para avaliar o progresso. É uma estimativa.",
+    "treino": "'valorant.aquecimento' (true/false) e 'aquecimento_descricao' descrevem o aquecimento antes das "
+              "partidas. 'valorant.aim_routine' traz se o treino de mira foi feito ('feita'), a duração em "
+              "minutos e os exercícios (nome, meta e 'feito'). Cada partida também tem o 'mapa'.",
     "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",

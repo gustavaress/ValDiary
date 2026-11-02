@@ -12,6 +12,7 @@ from app.analysis.ranking import ranking_atual_com_data, rr_por_dia
 from app.storage import ArquivoCorrompidoError, RepositorioDiario
 from app.storage.rascunho import apagar_rascunho, carregar_rascunho
 from app.storage.reorganizacao import reorganizar_se_preciso
+from app.storage.repositorio_aim import RepositorioAim
 from app.storage.repositorio_ranking import RankingSalvo, RepositorioRanking
 from app.ui import tema
 from app.ui.componentes.botoes import botao_secundario
@@ -90,14 +91,15 @@ class JanelaPrincipal(ctk.CTk):
         self.repositorio = repositorio
         self.arquivo_rascunho = arquivo_rascunho
         self.repositorio_ranking = RepositorioRanking(repositorio.pasta_dados, repositorio.pasta_backups)
+        self.repositorio_aim = RepositorioAim(repositorio.pasta_dados)
         # Antes de qualquer tela ler os dados: ajusta arquivos do formato antigo
         # de semanas (segunda a domingo) para o atual (domingo a sábado).
         self._reorganizacao = reorganizar_se_preciso(repositorio)
         self.atualizar_ranking_salvo()
 
         self.title(config.NOME_APP)
-        self.geometry("1200x760")
-        self.minsize(1000, 650)
+        self.geometry("1360x820")
+        self.minsize(1100, 680)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 

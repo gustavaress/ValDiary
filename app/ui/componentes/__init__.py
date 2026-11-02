@@ -8,6 +8,7 @@ from app.ui.componentes.formulario import (
     CampoTextoLongo,
     Secao,
 )
+from app.ui.componentes.lista_exercicios import ListaExercicios
 from app.ui.componentes.lista_partidas import ListaPartidas
 from app.ui.componentes.lista_editavel import ListaEditavel
 from app.ui.componentes.seletor import SeletorBotoes, SeletorClassificacao, SeletorNota
@@ -17,6 +18,7 @@ __all__ = [
     "CampoHorario",
     "CampoMarcacao",
     "CampoOpcao",
+    "ListaExercicios",
     "ListaPartidas",
     "Tabela",
     "CampoEntrada",

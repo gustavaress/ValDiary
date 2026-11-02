@@ -2,12 +2,14 @@
 
 import customtkinter as ctk
 
+from app.models.mapas import MAPAS
 from app.ui import tema
 from app.ui.componentes.botoes import botao_icone, botao_primario
 from app.ui.componentes.bandeja_agentes import escolher_agente, imagem_agente
 from app.ui.componentes.formulario import nova_entrada
 from app.ui.componentes.seletor import SeletorBotoes
 
+SEM_MAPA = "Mapa?"
 RESULTADOS = [("vitoria", "Vitória"), ("derrota", "Derrota"), ("empate", "Empate")]
 CORES_RESULTADO = {"vitoria": tema.COR_SUCESSO, "derrota": tema.COR_DESTAQUE, "empate": tema.COR_TEXTO_SECUNDARIO}
 
@@ -21,7 +23,7 @@ class CartaoPartida(ctk.CTkFrame):
         super().__init__(lista.area, fg_color=tema.COR_CAMPO, corner_radius=tema.RAIO)
         self._lista = lista
         self._agente: str | None = valores.get("agente") or None
-        self.grid_columnconfigure(3, weight=1)
+        self.grid_columnconfigure(4, weight=1)
 
         self._titulo = ctk.CTkLabel(self, text="", width=80, anchor="w", font=tema.fonte_secao(),
                                     text_color=tema.COR_TEXTO)
@@ -34,15 +36,21 @@ class CartaoPartida(ctk.CTkFrame):
         )
         self._botao_agente.grid(row=0, column=1, padx=6, pady=(10, 4), sticky="w")
 
+        self._mapa = ctk.CTkOptionMenu(self, values=[SEM_MAPA, *MAPAS], width=120, height=36,
+                                       dynamic_resizing=False, font=tema.fonte_normal(),
+                                       command=lambda _: lista.mudou())
+        self._mapa.set(valores.get("mapa") or SEM_MAPA)
+        self._mapa.grid(row=0, column=2, padx=6, pady=(10, 4), sticky="w")
+
         self._resultado = SeletorBotoes(self, RESULTADOS, cores=CORES_RESULTADO, largura_botao=74,
                                         ao_mudar=lambda _: lista.mudou())
         self._resultado.set(valores.get("resultado"))
-        self._resultado.grid(row=0, column=2, padx=6, pady=(10, 4), sticky="w")
+        self._resultado.grid(row=0, column=3, padx=6, pady=(10, 4), sticky="w")
 
-        botao_icone(self, "✕", lambda: lista.remover(self)).grid(row=0, column=4, padx=(0, 10), pady=(10, 4))
+        botao_icone(self, "✕", lambda: lista.remover(self)).grid(row=0, column=5, padx=(0, 10), pady=(10, 4))
 
         estatisticas = ctk.CTkFrame(self, fg_color="transparent")
-        estatisticas.grid(row=1, column=0, columnspan=5, sticky="w", padx=14, pady=(0, 12))
+        estatisticas.grid(row=1, column=0, columnspan=6, sticky="w", padx=14, pady=(0, 12))
         self._entradas: dict[str, ctk.CTkEntry] = {}
         for chave, rotulo, largura in ESTATISTICAS:
             bloco = ctk.CTkFrame(estatisticas, fg_color="transparent")
@@ -91,7 +99,9 @@ class CartaoPartida(ctk.CTkFrame):
         return self._agente
 
     def get(self) -> dict:
-        dados = {"agente": self._agente or "", "resultado": self._resultado.get()}
+        mapa = self._mapa.get()
+        dados = {"agente": self._agente or "", "mapa": None if mapa == SEM_MAPA else mapa,
+                 "resultado": self._resultado.get()}
         dados.update({chave: entrada.get().strip() for chave, entrada in self._entradas.items()})
         return dados
 

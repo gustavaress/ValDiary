@@ -79,4 +79,5 @@ def validar_registro(registro: RegistroDia) -> list[str]:
         if partida.rr is not None and not (-100 <= partida.rr <= 100):
             erros.append(f"{rotulo} (RR): deve estar entre -100 e +100.")
 
+    _checar_nao_negativo(erros, "Aim routine (duração)", jogo.aim_routine.duracao_min)
     return erros

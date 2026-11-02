@@ -12,6 +12,7 @@ Este módulo não depende da interface, por isso pode ser testado sozinho.
 from datetime import date
 
 from app.models import (
+    ExercicioAim,
     Bebida,
     Classificacao,
     Medicamento,
@@ -67,8 +68,15 @@ def registro_para_formulario(registro: RegistroDia) -> dict:
         "jogou": {True: "sim", False: "nao"}.get(jogo.jogou),
         "jogo_inicio": jogo.horario_inicio or "",
         "jogo_fim": jogo.horario_fim or "",
+        "aquecimento": {True: "sim", False: "nao"}.get(jogo.aquecimento),
+        "aquecimento_descricao": jogo.aquecimento_descricao or "",
+        "aim_feita": {True: "sim", False: "nao"}.get(jogo.aim_routine.feita),
+        "aim_duracao": para_campo(jogo.aim_routine.duracao_min),
+        "aim_exercicios": [{"nome": e.nome, "meta": e.meta or "", "feito": e.feito}
+                           for e in jogo.aim_routine.exercicios],
+        "aim_observacoes": jogo.aim_routine.observacoes or "",
         "partidas": [
-            {"agente": p.agente or "", "resultado": p.resultado, "abates": para_campo(p.abates),
+            {"agente": p.agente or "", "mapa": p.mapa, "resultado": p.resultado, "abates": para_campo(p.abates),
              "mortes": para_campo(p.mortes), "assistencias": para_campo(p.assistencias),
              "hs_pct": para_campo(p.hs_pct), "acs": para_campo(p.acs), "rr": _rr_para_campo(p.rr)}
             for p in jogo.partidas
@@ -178,6 +186,7 @@ def formulario_para_registro(formulario: dict) -> tuple[RegistroDia | None, list
     jogo.horario_fim = ler.hora("jogo_fim", "Fim do jogo")
     jogo.partidas = _ler_partidas(formulario.get("partidas") or [], ler)
     jogo.legado = formulario.get("legado")
+    _ler_treino(jogo, formulario, ler)
     for nota in _NOTAS_AVALIACAO:
         setattr(jogo.avaliacao, nota, formulario.get(nota))
     jogo.notas = ler.texto("notas_jogo")
@@ -200,6 +209,26 @@ def _partida_vazia(dados: dict) -> bool:
     return not any(conversao.texto(v) if isinstance(v, str) else v for v in dados.values())
 
 
+def _ler_treino(jogo, formulario: dict, ler: _Leitor) -> None:
+    """Aquecimento e aim routine."""
+    jogo.aquecimento = {"sim": True, "nao": False}.get(formulario.get("aquecimento"))
+    # A descrição só vale se o aquecimento foi feito (o campo fica desabilitado nos outros casos).
+    jogo.aquecimento_descricao = ler.texto("aquecimento_descricao") if jogo.aquecimento else None
+
+    aim = jogo.aim_routine
+    aim.feita = {"sim": True, "nao": False}.get(formulario.get("aim_feita"))
+    aim.duracao_min = ler.inteiro("aim_duracao", "Aim routine (duração em minutos)")
+    aim.observacoes = ler.texto("aim_observacoes")
+    exercicios = [
+        ExercicioAim(nome=conversao.texto(e.get("nome")), meta=conversao.texto(e.get("meta")), feito=bool(e.get("feito")))
+        for e in formulario.get("aim_exercicios") or [] if conversao.texto(e.get("nome"))
+    ]
+    if aim.feita is None and any(e.feito for e in exercicios):
+        aim.feita = True  # marcou exercícios: é óbvio que fez
+    # A lista da rotina padrão aparece em todo dia; só vale guardar se o treino aconteceu.
+    aim.exercicios = exercicios if aim.feita else []
+
+
 def _ler_partidas(lista: list[dict], ler: _Leitor) -> list[Partida]:
     partidas = []
     for dados in lista:
@@ -208,6 +237,7 @@ def _ler_partidas(lista: list[dict], ler: _Leitor) -> list[Partida]:
         rotulo = f"Partida {len(partidas) + 1}"
         partidas.append(Partida(
             agente=conversao.texto(dados.get("agente")),
+            mapa=conversao.texto(dados.get("mapa")),
             resultado=dados.get("resultado"),
             abates=ler.inteiro_valor(dados.get("abates"), f"{rotulo} (abates)"),
             mortes=ler.inteiro_valor(dados.get("mortes"), f"{rotulo} (mortes)"),

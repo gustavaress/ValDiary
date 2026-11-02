@@ -62,7 +62,13 @@ def _v3_para_v4(documento: dict) -> dict:
     return documento
 
 
-_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3, 3: _v3_para_v4}
+def _v4_para_v5(documento: dict) -> dict:
+    """v5: mapa por partida, aquecimento e aim routine (campos novos, vazios nos dias antigos)."""
+    documento["versao_schema"] = 5
+    return documento
+
+
+_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3, 3: _v3_para_v4, 4: _v4_para_v5}
 
 
 def migrar_documento(documento: dict) -> dict:

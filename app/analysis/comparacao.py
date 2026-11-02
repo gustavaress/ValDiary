@@ -163,6 +163,10 @@ def _habitos_do_dia(registro: RegistroDia, nomes: dict[str, str]) -> set[str]:
             itens.add(item("Medicamento", remedio.nome))
     for agente in registro.valorant.nomes_agentes:
         itens.add(item("Agente", agente))
+    if registro.valorant.aim_routine.feita:
+        itens.add(item("Treino", "aim routine"))
+    if registro.valorant.aquecimento:
+        itens.add(item("Treino", "aquecimento antes de jogar"))
     return itens
 
 

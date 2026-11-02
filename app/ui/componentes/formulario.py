@@ -172,6 +172,15 @@ class CampoTextoLongo(ctk.CTkFrame):
         return self.caixa.get("1.0", "end-1c").strip()
 
     def set(self, valor: str | None) -> None:
+        # Uma caixa desabilitada não aceita texto; liberamos só durante a troca.
+        estado = self.caixa.cget("state")
+        self.caixa.configure(state="normal")
         self.caixa.delete("1.0", "end")
         if valor:
             self.caixa.insert("1.0", valor)
+        self.caixa.configure(state=estado)
+
+    def habilitar(self, ativo: bool) -> None:
+        self.caixa.configure(state="normal" if ativo else "disabled",
+                             text_color=tema.COR_TEXTO if ativo else tema.COR_TEXTO_FRACO,
+                             fg_color=tema.COR_CAMPO if ativo else tema.COR_CARTAO)

@@ -10,7 +10,9 @@ from app.storage import ArquivoCorrompidoError
 from app.storage.semanas import periodo_semana, semana_da_data
 from app.ui import tema
 from app.ui.componentes.botoes import botao_primario
-from app.ui.componentes import CartaoInfo
+from app.analysis.insights import gerar_insights
+from app.ui.componentes import CartaoInfo, Secao
+from app.ui.componentes.formulario import rotulo_quebravel
 from app.ui.formatacao import data_extensa, data_tabela, numero
 from app.ui.telas.base import TelaBase
 
@@ -46,24 +48,30 @@ class TelaInicio(TelaBase):
 
         self._botao = botao_primario(area, "", lambda: self.janela.abrir_registro(date.today()),
                                      largura=300, altura=46)
-        self._botao.grid(row=1, column=0, columnspan=2, sticky="w", padx=6, pady=(14, 24))
+        self._botao.grid(row=1, column=0, columnspan=2, sticky="w", padx=6, pady=(14, 18))
+
+        secao = Secao(area, "Insights", "Padrões que aparecem nos seus registros. São associações, "
+                                        "não provam que uma coisa causa a outra.")
+        secao.grid(row=2, column=0, columnspan=4, sticky="ew", padx=6, pady=(0, 18))
+        self._insights = ctk.CTkFrame(secao.conteudo, fg_color="transparent")
+        self._insights.pack(fill="x")
 
         # Semana atual
         self._titulo_semana = ctk.CTkLabel(area, text="", font=tema.fonte_secao(), text_color=tema.COR_TEXTO)
-        self._titulo_semana.grid(row=2, column=0, columnspan=4, sticky="w", padx=6)
+        self._titulo_semana.grid(row=3, column=0, columnspan=4, sticky="w", padx=6)
         self._classificacoes = ctk.CTkFrame(area, fg_color="transparent")
-        self._classificacoes.grid(row=3, column=0, columnspan=4, sticky="w", padx=6, pady=(2, 6))
+        self._classificacoes.grid(row=4, column=0, columnspan=4, sticky="w", padx=6, pady=(2, 6))
 
         self._indicadores: dict[str, CartaoInfo] = {}
         for i, (chave, titulo, _, _) in enumerate(INDICADORES_SEMANA):
             cartao = CartaoInfo(area, titulo)
-            cartao.grid(row=4 + i // 4, column=i % 4, sticky="nsew", padx=6, pady=6)
+            cartao.grid(row=5 + i // 4, column=i % 4, sticky="nsew", padx=6, pady=6)
             self._indicadores[chave] = cartao
 
         # Último registro
         ultimo = ctk.CTkFrame(area, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                               border_width=1, border_color=tema.COR_BORDA)
-        ultimo.grid(row=6, column=0, columnspan=4, sticky="ew", padx=6, pady=(18, 6))
+        ultimo.grid(row=7, column=0, columnspan=4, sticky="ew", padx=6, pady=(18, 6))
         self._ultimo_titulo = ctk.CTkLabel(ultimo, text="", font=tema.fonte_secao(), text_color=tema.COR_TEXTO)
         self._ultimo_titulo.pack(anchor="w", padx=18, pady=(14, 2))
         self._ultimo_texto = ctk.CTkLabel(ultimo, text="", font=tema.fonte_normal(), justify="left",
@@ -76,6 +84,7 @@ class TelaInicio(TelaBase):
         self._atualizar_situacao(registros, hoje)
         self._atualizar_semana(registros, hoje)
         self._atualizar_ultimo(registros)
+        self._atualizar_insights(registros)
 
     # --- Partes da tela ---------------------------------------------------
 
@@ -150,6 +159,21 @@ class TelaInicio(TelaBase):
                 ctk.CTkLabel(self._classificacoes, text=f"●  {quantidade} {rotulo}",
                              font=tema.fonte_pequena(),
                              text_color=tema.CORES_CLASSIFICACAO[chave]).pack(side="left", padx=(0, 16))
+
+    def _atualizar_insights(self, registros) -> None:
+        for filho in self._insights.winfo_children():
+            filho.destroy()
+        insights = gerar_insights(registros, self.janela.rr_por_dia(registros))
+        for frase in insights.frases:
+            linha = ctk.CTkFrame(self._insights, fg_color="transparent")
+            linha.pack(fill="x", pady=3)
+            ctk.CTkLabel(linha, text="▸", width=18, font=tema.fonte_forte(),
+                         text_color=tema.COR_DESTAQUE).pack(side="left", anchor="n")
+            rotulo_quebravel(linha, frase, font=tema.fonte_normal(), text_color=tema.COR_TEXTO).pack(
+                side="left", fill="x", expand=True)
+        if insights.aviso:
+            rotulo_quebravel(self._insights, insights.aviso, font=tema.fonte_pequena(),
+                             text_color=tema.COR_TEXTO_SECUNDARIO).pack(fill="x")
 
     def _atualizar_ultimo(self, registros) -> None:
         if not registros:

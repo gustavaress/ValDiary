@@ -156,6 +156,7 @@ class Partida:
     hs_pct: float | None = None
     acs: float | None = None
     rr: int | None = None  # pontos de ranking ganhos (+) ou perdidos (-) na partida
+    mapa: str | None = None  # no fim para não mudar a ordem dos campos já existentes
 
     @property
     def kd(self) -> float | None:
@@ -280,10 +281,41 @@ class AvaliacaoJogo:
 
 
 @dataclass
+class ExercicioAim:
+    nome: str
+    meta: str | None = None   # ex.: "5 minutos", "2 séries de 100"
+    feito: bool = False
+
+
+@dataclass
+class AimRoutine:
+    feita: bool | None = None
+    duracao_min: int | None = None
+    exercicios: list[ExercicioAim] = field(default_factory=list)
+    observacoes: str | None = None
+
+    @property
+    def exercicios_feitos(self) -> list[ExercicioAim]:
+        return [e for e in self.exercicios if e.feito]
+
+    @classmethod
+    def from_dict(cls, dados: dict | None) -> "AimRoutine":
+        dados = dict(dados or {})
+        exercicios = dados.pop("exercicios", None) or []
+        objeto = _simples(cls, dados)
+        objeto.exercicios = [_simples(ExercicioAim, e) for e in exercicios if isinstance(e, dict) and e.get("nome")]
+        return objeto
+
+
+@dataclass
 class Valorant:
     jogou: bool | None = None
     horario_inicio: str | None = None
     horario_fim: str | None = None
+
+    aquecimento: bool | None = None
+    aquecimento_descricao: str | None = None
+    aim_routine: AimRoutine = field(default_factory=lambda: AimRoutine())
 
     partidas: list[Partida] = field(default_factory=list)
     avaliacao: AvaliacaoJogo = field(default_factory=AvaliacaoJogo)
@@ -315,9 +347,11 @@ class Valorant:
     def from_dict(cls, dados: dict | None) -> "Valorant":
         dados = dict(dados or {})
         avaliacao = _simples(AvaliacaoJogo, dados.pop("avaliacao", None))
+        aim = AimRoutine.from_dict(dados.pop("aim_routine", None))
         partidas = dados.pop("partidas", None) or []
         objeto = _simples(cls, dados)
         objeto.avaliacao = avaliacao
+        objeto.aim_routine = aim
         objeto.partidas = [_simples(Partida, p) for p in partidas]
         return objeto
 

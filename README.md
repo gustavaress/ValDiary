@@ -19,7 +19,12 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | | Funcionalidade | Status |
 |---|---|---|
 | 🎨 | **Visual no estilo Valorant** (v3): grafite e vermelho, tipografia condensada, ícone próprio | ✅ |
-| 📝 | **Registro diário** em abas (Rotina / Valorant / Partidas / Anotações), com notas de 1 a 10 por clique | ✅ |
+| 📝 | **Registro diário** em abas (Rotina / Valorant / Partidas / Aim Routine / Anotações), com notas de 1 a 10 por clique | ✅ |
+| 🗺️ | **Mapa por partida** e tabelas de desempenho por mapa e por agente (v4) | ✅ |
+| 🎯 | **Aim Routine**: checklist com a sua rotina padrão, duração e contador semanal no Dashboard (v4) | ✅ |
+| 🔥 | **Aquecimento** antes das partidas, com descrição (v4) | ✅ |
+| 💡 | **Insights** na tela inicial: o que mais muda entre seus dias bons e ruins (v4) | ✅ |
+| 📉 | Gráfico do **ranking ao longo do tempo** no Dashboard (v4) | ✅ |
 | 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
 | 🎮 | **Registro por partida** (agente pela bandeja de fotos, resultado, K/D/A, HS%, ACS) com resumo do dia calculado | ✅ |
 | 📅 | Validador de data: não deixa registrar dias já preenchidos nem datas futuras | ✅ |
@@ -54,7 +59,8 @@ python main.py
 Para rodar os testes automáticos:
 
 ```powershell
-python -m pytest
+python -m pytest                    # todos (inclui os que abrem a janela, ~20 s)
+python -m pytest -m "not interface"  # só os rápidos
 ```
 
 ---
@@ -71,6 +77,7 @@ dados/
 ├── _backups/               ← versões anteriores de cada semana (últimas 10)
 ├── _exportacoes/
 ├── ranking.json            ← seu ranking atual + ajustes manuais da aba Ranking
+├── aim_routine.json        ← sua rotina de aim padrão (editável pela aba Aim Routine)
 └── _rascunho.json          ← formulário não salvo (temporário)
 ```
 
@@ -155,6 +162,7 @@ O campo `versao_schema` indica o formato do arquivo. Quando o formato muda, o ap
 | 2 | Refeições ganham `realizada`; `agentes` passa de lista de nomes para `{nome, partidas}` |
 | 3 | Valorant registrado **por partida**; totais antigos do dia vão para `legado`; ADR sai das análises |
 | 4 | RR por partida (o ranking fica em `dados/ranking.json`); semanas passam a ir de **domingo a sábado** |
+| 5 | Mapa por partida, aquecimento e aim routine (`valorant.aim_routine`) |
 
 ## Imagens dos agentes
 
@@ -220,12 +228,12 @@ app/
 ├── analysis/            filtros e resumos (sem interface)
 └── ui/                  interface CustomTkinter
     ├── componentes/     widgets reutilizáveis (seletor de nota, listas...)
-    └── telas/           uma tela por arquivo
+    └── telas/           uma tela por arquivo; registro/ tem um arquivo por aba
 assets/agentes/          miniaturas dos agentes + catálogo (gerados por scripts/gerar_agentes.py)
 assets/fontes/           Bebas Neue e Barlow (licença OFL)
 assets/icone.ico         ícone da janela (gerado por app/ui/logo.py)
 scripts/                 utilitários de desenvolvimento
-tests/                   testes automáticos (pytest)
+tests/                   testes automáticos (pytest); test_interface.py abre o app de verdade
 ```
 
 A interface nunca lê ou grava arquivos diretamente: tudo passa pelo `storage`. Isso concentra as regras de segurança dos dados num lugar só e permite testar o armazenamento sem abrir janelas.
