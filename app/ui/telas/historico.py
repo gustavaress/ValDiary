@@ -6,6 +6,7 @@ import customtkinter as ctk
 
 from app.analysis.filtros import filtrar
 from app.ui import tema
+from app.ui.componentes.botoes import botao_primario, botao_secundario
 from app.ui.componentes import SeletorClassificacao, Tabela
 from app.ui.formatacao import data_curta, data_extensa, data_tabela, numero
 from app.ui.telas.base import TelaBase
@@ -105,7 +106,7 @@ class TelaHistorico(TelaBase):
         self._contador.pack(side="right")
 
     def _montar_tabela(self) -> None:
-        moldura = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=12,
+        moldura = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                                border_width=1, border_color=tema.COR_BORDA)
         moldura.grid(row=1, column=0, sticky="nsew")
 
@@ -120,7 +121,7 @@ class TelaHistorico(TelaBase):
                                    text_color=tema.COR_TEXTO_SECUNDARIO)
 
     def _montar_detalhe(self) -> None:
-        painel = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=12,
+        painel = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                               border_width=1, border_color=tema.COR_BORDA)
         painel.grid(row=2, column=0, sticky="ew", pady=(12, 0))
         painel.grid_columnconfigure(0, weight=1)
@@ -131,17 +132,12 @@ class TelaHistorico(TelaBase):
 
         botoes = ctk.CTkFrame(painel, fg_color="transparent")
         botoes.grid(row=0, column=1, sticky="e", padx=18, pady=(14, 4))
-        self._botao_editar = ctk.CTkButton(botoes, text="Editar", width=90, state="disabled",
-                                           fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-                                           command=self._editar)
+        self._botao_editar = botao_primario(botoes, "Editar", self._editar, largura=100, altura=34)
         self._botao_editar.pack(side="left", padx=(0, 8))
-        self._botao_excluir = ctk.CTkButton(botoes, text="Excluir", width=90, state="disabled",
-                                            fg_color="transparent", border_width=1,
-                                            border_color=tema.COR_BORDA, hover_color=tema.COR_BORDA,
-                                            text_color=tema.COR_TEXTO_SECUNDARIO, command=self._excluir)
+        self._botao_excluir = botao_secundario(botoes, "Excluir", self._excluir, largura=100, altura=34)
         self._botao_excluir.pack(side="left")
 
-        self._detalhe_texto = ctk.CTkTextbox(painel, height=90, fg_color=tema.COR_FUNDO,
+        self._detalhe_texto = ctk.CTkTextbox(painel, height=90, fg_color=tema.COR_CAMPO,
                                              text_color=tema.COR_TEXTO, font=tema.fonte_normal(),
                                              wrap="word", state="disabled")
         self._detalhe_texto.grid(row=1, column=0, columnspan=2, sticky="ew", padx=18, pady=(0, 16))

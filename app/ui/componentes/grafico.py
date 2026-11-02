@@ -13,23 +13,34 @@ from matplotlib.ticker import FuncFormatter  # noqa: E402
 from app.ui import tema  # noqa: E402
 from app.ui.formatacao import hora_texto  # noqa: E402
 
-# Cores das séries: azul e laranja, validadas para daltonismo e contraste
-# sobre o fundo dos cartões (#1A2632).
-SERIE_1 = "#3987e5"
-SERIE_2 = "#d95926"
-_SUPERFICIE = tema.COR_CARTAO
-_GRADE = "#253444"
-_EIXO = "#3A4B5C"
+from matplotlib import font_manager  # noqa: E402
 
-matplotlib.rcParams["font.family"] = ["Segoe UI", "DejaVu Sans"]
+# Cores das séries, validadas para daltonismo e contraste sobre o fundo dos
+# cartões (#171A20). Série única: o vermelho da marca. Comparação entre grupos:
+# azul (dias bons) x vermelho (dias ruins).
+SERIE_1 = tema.COR_DESTAQUE
+SERIE_BONS = "#3987e5"
+SERIE_RUINS = tema.COR_DESTAQUE
+_SUPERFICIE = tema.COR_CARTAO
+_GRADE = "#23272F"
+_EIXO = tema.COR_BORDA_FORTE
+
+# Mesmas fontes do resto do app nos gráficos (as embutidas em assets/fontes).
+for _arquivo in tema.PASTA_FONTES.glob("Barlow-*.ttf"):
+    font_manager.fontManager.addfont(str(_arquivo))
+matplotlib.rcParams["font.family"] = [tema.FONTE_TEXTO, "Segoe UI", "DejaVu Sans"]
 
 
 class Grafico(ctk.CTkFrame):
     def __init__(self, master, titulo: str, altura: int = 260):
-        super().__init__(master, fg_color=_SUPERFICIE, corner_radius=12,
+        super().__init__(master, fg_color=_SUPERFICIE, corner_radius=tema.RAIO,
                          border_width=1, border_color=tema.COR_BORDA)
-        ctk.CTkLabel(self, text=titulo, font=tema.fonte_secao(),
-                     text_color=tema.COR_TEXTO).pack(anchor="w", padx=18, pady=(14, 0))
+        cabecalho = ctk.CTkFrame(self, fg_color="transparent")
+        cabecalho.pack(fill="x", padx=18, pady=(14, 0))
+        ctk.CTkFrame(cabecalho, width=3, height=20, corner_radius=0,
+                     fg_color=tema.COR_DESTAQUE).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(cabecalho, text=titulo.upper(), font=tema.fonte_secao(), height=26,
+                     text_color=tema.COR_TEXTO).pack(side="left")
         self._subtitulo = ctk.CTkLabel(self, text="", font=tema.fonte_pequena(),
                                        text_color=tema.COR_TEXTO_SECUNDARIO)
         self._subtitulo.pack(anchor="w", padx=18)
@@ -69,7 +80,7 @@ class Grafico(ctk.CTkFrame):
         self._dica = eixo.annotate(
             "", xy=(0, 0), xytext=(12, 12), textcoords="offset points", visible=False,
             fontsize=9, color=tema.COR_TEXTO, zorder=10,
-            bbox={"boxstyle": "round,pad=0.6", "fc": tema.COR_MENU, "ec": tema.COR_BORDA},
+            bbox={"boxstyle": "square,pad=0.6", "fc": tema.COR_MENU, "ec": tema.COR_DESTAQUE, "lw": 1},
         )
 
     def mostrar_vazio(self, mensagem: str) -> None:

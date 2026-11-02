@@ -17,12 +17,12 @@ def _configurar_estilo(widget, escala: float) -> None:
     estilo = ttk.Style(widget)
     estilo.theme_use("clam")
     estilo.configure(_ESTILO, background=tema.COR_CARTAO, fieldbackground=tema.COR_CARTAO,
-                     foreground=tema.COR_TEXTO, borderwidth=0, rowheight=int(30 * escala),
-                     font=("Segoe UI", 10))
-    estilo.configure(f"{_ESTILO}.Heading", background=tema.COR_MENU,
+                     foreground=tema.COR_TEXTO, borderwidth=0, rowheight=int(32 * escala),
+                     font=(tema.FONTE_TEXTO, 10))
+    estilo.configure(f"{_ESTILO}.Heading", background=tema.COR_CAMPO,
                      foreground=tema.COR_TEXTO_SECUNDARIO, borderwidth=0, relief="flat",
-                     font=("Segoe UI", 10, "bold"), padding=(4, int(6 * escala)))
-    estilo.map(_ESTILO, background=[("selected", tema.COR_BORDA)],
+                     font=(tema.FONTE_TEXTO_FORTE, 9), padding=(6, int(7 * escala)))
+    estilo.map(_ESTILO, background=[("selected", tema.COR_DESTAQUE_SUAVE)],
                foreground=[("selected", tema.COR_TEXTO)])
     estilo.map(f"{_ESTILO}.Heading", background=[("active", tema.COR_CARTAO_HOVER)])
     estilo.layout(_ESTILO, [("Treeview.treearea", {"sticky": "nswe"})])
@@ -43,7 +43,7 @@ class Tabela(ctk.CTkFrame):
         self.arvore = ttk.Treeview(self, style=_ESTILO, show="headings", selectmode="browse",
                                    columns=[c[0] for c in colunas])
         for chave, titulo, largura, alinhamento in colunas:
-            self.arvore.heading(chave, text=titulo, anchor=alinhamento)
+            self.arvore.heading(chave, text=titulo.upper(), anchor=alinhamento)
             self.arvore.column(chave, width=int(largura * escala), minwidth=40, anchor=alinhamento,
                                stretch=True)
         self.arvore.tag_configure("par", background=tema.COR_CARTAO_HOVER)

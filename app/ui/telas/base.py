@@ -19,11 +19,16 @@ class TelaBase(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
 
         cabecalho = ctk.CTkFrame(self, fg_color="transparent")
-        cabecalho.grid(row=0, column=0, sticky="ew", pady=(0, 20))
-        ctk.CTkLabel(cabecalho, text=self.titulo, font=tema.fonte_titulo(),
-                     text_color=tema.COR_TEXTO).pack(anchor="w")
+        cabecalho.grid(row=0, column=0, sticky="ew", pady=(0, 18))
+        # "Olho" acima do título, no estilo dos menus do Valorant: // 02 · REGISTRO DIÁRIO
+        numero = janela.numero_da_tela(type(self))
+        olho = f"//  {numero:02d}  ·  {self.titulo.upper()}" if numero else f"//  {self.titulo.upper()}"
+        ctk.CTkLabel(cabecalho, text=olho, font=tema.fonte_rotulo(), height=16,
+                     text_color=tema.COR_DESTAQUE).pack(anchor="w")
+        ctk.CTkLabel(cabecalho, text=self.titulo.upper(), font=tema.fonte_titulo(), height=40,
+                     text_color=tema.COR_TEXTO).pack(anchor="w", pady=(0, 0))
         if self.subtitulo:
-            ctk.CTkLabel(cabecalho, text=self.subtitulo, font=tema.fonte_subtitulo(),
+            ctk.CTkLabel(cabecalho, text=self.subtitulo, font=tema.fonte_subtitulo(), height=18,
                          text_color=tema.COR_TEXTO_SECUNDARIO).pack(anchor="w")
 
         self.corpo = ctk.CTkFrame(self, fg_color="transparent")
@@ -43,7 +48,7 @@ class TelaEmConstrucao(TelaBase):
     etapa = 0
 
     def montar(self) -> None:
-        caixa = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=12,
+        caixa = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                              border_width=1, border_color=tema.COR_BORDA)
         caixa.pack(fill="x")
         ctk.CTkLabel(caixa, text="Em construção", font=tema.fonte_secao(),

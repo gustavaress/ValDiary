@@ -20,22 +20,18 @@ from app.storage.import_export import (
 )
 from app.storage.semanas import periodo_semana
 from app.ui import tema
+from app.ui.componentes.botoes import botao_primario, botao_secundario
 from app.ui.area_transferencia import copiar_texto
 from app.ui.componentes import Secao
 from app.ui.telas.base import TelaBase
 
 
-def _botao_secundario(master, texto: str, comando, largura: int = 90) -> ctk.CTkButton:
-    return ctk.CTkButton(master, text=texto, width=largura, height=30, font=tema.fonte_pequena(),
-                         fg_color="transparent", border_width=1, border_color=tema.COR_BORDA,
-                         text_color=tema.COR_TEXTO_SECUNDARIO, hover_color=tema.COR_CARTAO_HOVER,
-                         command=comando)
+def _botao_secundario(master, texto: str, comando, largura: int = 90):
+    return botao_secundario(master, texto, comando, largura=largura, altura=32)
 
 
-def _botao_principal(master, texto: str, comando) -> ctk.CTkButton:
-    return ctk.CTkButton(master, text=texto, height=40, font=tema.fonte_secao(),
-                         fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-                         command=comando)
+def _botao_principal(master, texto: str, comando):
+    return botao_primario(master, texto, comando, altura=42)
 
 
 class TelaImportExport(TelaBase):
@@ -68,7 +64,7 @@ class TelaImportExport(TelaBase):
         _botao_secundario(atalhos, "Nenhuma", lambda: self._marcar(lambda i, n: False)).pack(side="left", padx=6)
         _botao_secundario(atalhos, "Últimas 4", lambda: self._marcar(lambda i, n: i >= n - 4)).pack(side="left")
 
-        self._lista_semanas = ctk.CTkScrollableFrame(conteudo, fg_color=tema.COR_FUNDO, corner_radius=8)
+        self._lista_semanas = ctk.CTkScrollableFrame(conteudo, fg_color=tema.COR_CAMPO, corner_radius=tema.RAIO)
         self._lista_semanas.pack(fill="both", expand=True, pady=(0, 10))
 
         _botao_principal(conteudo, "Exportar selecionadas...", self._exportar).pack(fill="x")

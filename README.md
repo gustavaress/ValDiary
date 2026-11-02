@@ -2,7 +2,7 @@
 
 Diário pessoal de rotina e desempenho no **Valorant**, para Windows.
 
-A ideia é registrar todos os dias como foi a rotina (sono, alimentação, hidratação, disposição, estresse) e como foi o jogo (K/D/A, ACS, ADR, HS%, sensação da mira, concentração...) para, com o tempo, encontrar **padrões** entre hábitos e desempenho:
+A ideia é registrar todos os dias como foi a rotina (sono, alimentação, hidratação, disposição, estresse) e como foi o jogo, partida a partida (agente, resultado, K/D/A, ACS, HS%, RR, sensação da mira, concentração...) para, com o tempo, encontrar **padrões** entre hábitos e desempenho:
 
 - o que costuma acontecer nos melhores dias;
 - o que muda nos piores dias;
@@ -18,7 +18,8 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 
 | | Funcionalidade | Status |
 |---|---|---|
-| 📝 | **Registro diário** em abas (Rotina / Valorant / Anotações), com notas de 1 a 10 por clique | ✅ |
+| 🎨 | **Visual no estilo Valorant** (v3): grafite e vermelho, tipografia condensada, ícone próprio | ✅ |
+| 📝 | **Registro diário** em abas (Rotina / Valorant / Partidas / Anotações), com notas de 1 a 10 por clique | ✅ |
 | 🕒 | Horários escolhidos em menus (sem digitação) e refeições marcadas por caixa | ✅ |
 | 🎮 | **Registro por partida** (agente pela bandeja de fotos, resultado, K/D/A, HS%, ACS) com resumo do dia calculado | ✅ |
 | 📅 | Validador de data: não deixa registrar dias já preenchidos nem datas futuras | ✅ |
@@ -199,6 +200,14 @@ python scripts/gerar_agentes.py
 
 O arquivo exportado traz um bloco `_legenda` explicando escalas, unidades e o significado de `null`, para a IA não interpretar nada errado.
 
+## Visual
+
+- **Paleta**: grafite quase preto, cinzas escalonados, texto off-white e o vermelho `#FF4655` como acento (item ativo, ações principais, marcações).
+- **Tipografia**: [Bebas Neue](https://fonts.google.com/specimen/Bebas+Neue) nos títulos e números e [Barlow](https://fonts.google.com/specimen/Barlow) no texto. As duas têm licença livre (SIL OFL, arquivos em `assets/fontes/`) e são carregadas pelo próprio app, sem precisar instalar.
+- **Gráficos**: uma série usa o vermelho da marca; na comparação, dias bons em azul e dias ruins em vermelho (par validado para daltonismo e contraste).
+- Toda a identidade fica em `app/ui/tema.py` (cores, fontes e o tema global do CustomTkinter). Os botões padronizados ficam em `app/ui/componentes/botoes.py`.
+- O logo (um "V" angular, desenho próprio) é gerado por código em `app/ui/logo.py`, que também gera `assets/icone.ico`.
+
 ## Estrutura do projeto
 
 ```
@@ -212,6 +221,8 @@ app/
     ├── componentes/     widgets reutilizáveis (seletor de nota, listas...)
     └── telas/           uma tela por arquivo
 assets/agentes/          miniaturas dos agentes + catálogo (gerados por scripts/gerar_agentes.py)
+assets/fontes/           Bebas Neue e Barlow (licença OFL)
+assets/icone.ico         ícone da janela (gerado por app/ui/logo.py)
 scripts/                 utilitários de desenvolvimento
 tests/                   testes automáticos (pytest)
 ```
@@ -220,4 +231,4 @@ A interface nunca lê ou grava arquivos diretamente: tudo passa pelo `storage`. 
 
 ## Tecnologias
 
-Python · CustomTkinter · pandas · Matplotlib · Pillow · pytest
+Python · CustomTkinter · pandas · Matplotlib · Pillow · pytest · fontes Bebas Neue e Barlow (OFL)

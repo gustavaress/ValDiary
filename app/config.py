@@ -7,7 +7,8 @@ fica aqui, para não ficar espalhado pelo código.
 import sys
 from pathlib import Path
 
-NOME_APP = "Diário de Performance Valorant"
+NOME_APP = "ValDiary · Diário de Performance"
+VERSAO_APP = "3.0"
 
 # Versão do formato dos arquivos JSON. Sempre que a estrutura mudar de forma
 # incompatível, incrementamos este número e escrevemos uma migração.

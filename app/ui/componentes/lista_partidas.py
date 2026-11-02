@@ -3,6 +3,7 @@
 import customtkinter as ctk
 
 from app.ui import tema
+from app.ui.componentes.botoes import botao_icone, botao_primario
 from app.ui.componentes.bandeja_agentes import escolher_agente, imagem_agente
 from app.ui.componentes.formulario import nova_entrada
 from app.ui.componentes.seletor import SeletorBotoes
@@ -17,7 +18,7 @@ ESTATISTICAS = [("abates", "K", 58), ("mortes", "D", 58), ("assistencias", "A", 
 
 class CartaoPartida(ctk.CTkFrame):
     def __init__(self, lista: "ListaPartidas", valores: dict):
-        super().__init__(lista.area, fg_color=tema.COR_FUNDO, corner_radius=10)
+        super().__init__(lista.area, fg_color=tema.COR_CAMPO, corner_radius=tema.RAIO)
         self._lista = lista
         self._agente: str | None = valores.get("agente") or None
         self.grid_columnconfigure(3, weight=1)
@@ -38,9 +39,7 @@ class CartaoPartida(ctk.CTkFrame):
         self._resultado.set(valores.get("resultado"))
         self._resultado.grid(row=0, column=2, padx=6, pady=(10, 4), sticky="w")
 
-        ctk.CTkButton(self, text="✕", width=32, height=32, fg_color="transparent",
-                      hover_color=tema.COR_BORDA, text_color=tema.COR_TEXTO_SECUNDARIO,
-                      command=lambda: lista.remover(self)).grid(row=0, column=4, padx=(0, 10), pady=(10, 4))
+        botao_icone(self, "✕", lambda: lista.remover(self)).grid(row=0, column=4, padx=(0, 10), pady=(10, 4))
 
         estatisticas = ctk.CTkFrame(self, fg_color="transparent")
         estatisticas.grid(row=1, column=0, columnspan=5, sticky="w", padx=14, pady=(0, 12))
@@ -108,9 +107,8 @@ class ListaPartidas(ctk.CTkFrame):
         self.area.pack(fill="x")
         self._vazio = ctk.CTkLabel(self.area, text="Nenhuma partida registrada neste dia.",
                                    font=tema.fonte_pequena(), text_color=tema.COR_TEXTO_SECUNDARIO)
-        ctk.CTkButton(self, text="+ Adicionar partida", width=170, height=36, font=tema.fonte_normal(),
-                      fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-                      command=self.adicionar).pack(anchor="w", pady=(8, 0))
+        botao_primario(self, "+ Adicionar partida", self.adicionar, largura=200, altura=38).pack(
+            anchor="w", pady=(10, 0))
         self._reorganizar()
 
     def adicionar(self, valores: dict | None = None, avisar: bool = True) -> None:

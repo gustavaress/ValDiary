@@ -9,6 +9,7 @@ from app.analysis.ranking import evolucao_ranking
 from app.models.ranking import ELOS, erros_definicao
 from app.storage import ArquivoCorrompidoError
 from app.ui import conversao, tema
+from app.ui.componentes.botoes import botao_primario, botao_secundario
 from app.ui.componentes import CampoEntrada, CampoOpcao, CartaoInfo, Secao, Tabela
 from app.ui.formatacao import data_curta, data_tabela
 from app.ui.telas.base import TelaBase
@@ -40,9 +41,7 @@ class TelaRanking(TelaBase):
         self._data = CampoEntrada(linha, "Vale a partir de", largura=120, placeholder="DD/MM/AAAA")
         for campo in (self._elo, self._rr, self._data):
             campo.pack(side="left", padx=(0, 16))
-        ctk.CTkButton(linha, text="Salvar ranking", width=140, height=34, font=tema.fonte_normal(),
-                      fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-                      command=self._salvar).pack(side="left", anchor="s")
+        botao_primario(linha, "Salvar ranking", self._salvar, largura=160, altura=34).pack(side="left", anchor="s")
 
         secao = Secao(area, "Evolução dia a dia",
                       "RR de cada partida aplicado na ordem, com proteção contra rebaixamento. "
@@ -61,10 +60,8 @@ class TelaRanking(TelaBase):
             ("definido_em", "Definido em", 160, "w"),
         ], altura_automatica=True)
         self._tabela_definicoes.pack(fill="x")
-        ctk.CTkButton(secao.conteudo, text="Remover selecionada", width=170, height=32,
-                      fg_color="transparent", border_width=1, border_color=tema.COR_BORDA,
-                      text_color=tema.COR_TEXTO_SECUNDARIO, hover_color=tema.COR_CARTAO_HOVER,
-                      command=self._remover).pack(anchor="w", pady=(8, 0))
+        botao_secundario(secao.conteudo, "Remover selecionado", self._remover, largura=180, altura=32).pack(
+            anchor="w", pady=(10, 0))
 
     @property
     def _repositorio_ranking(self):

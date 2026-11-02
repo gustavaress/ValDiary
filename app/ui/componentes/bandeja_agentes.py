@@ -8,10 +8,11 @@ from PIL import Image
 
 from app.storage.catalogo_agentes import agrupar_por_funcao, carregar_agentes
 from app.ui import tema
+from app.ui.componentes.botoes import botao_secundario
 
-TAMANHO_FOTO = 56
+TAMANHO_FOTO = 48
 TEMPO_MINIMO_ABERTA_S = 0.3
-AGENTES_POR_LINHA = 8
+AGENTES_POR_LINHA = 9
 
 _PLURAL_FUNCAO = {"Duelista": "Duelistas", "Iniciador": "Iniciadores",
                   "Controlador": "Controladores", "Sentinela": "Sentinelas"}
@@ -42,29 +43,35 @@ class BandejaAgentes(ctk.CTkToplevel):
                                     "Rode no terminal: python scripts/gerar_agentes.py",
                          text_color=tema.COR_AVISO, font=tema.fonte_normal()).pack(padx=30, pady=30)
 
+        ctk.CTkLabel(self, text="//  SELEÇÃO DE AGENTE", font=tema.fonte_rotulo(), height=16,
+                     text_color=tema.COR_DESTAQUE).pack(anchor="w", padx=22, pady=(18, 0))
+        ctk.CTkLabel(self, text="ESCOLHA O AGENTE", font=tema.fonte_display(32), height=34,
+                     text_color=tema.COR_TEXTO).pack(anchor="w", padx=22)
+
         grade = ctk.CTkFrame(self, fg_color="transparent")
-        grade.pack(padx=18, pady=(12, 6))
+        grade.pack(padx=18, pady=(4, 6))
         linha = 0
         for funcao, agentes in agrupar_por_funcao(catalogo):
-            ctk.CTkLabel(grade, text=_PLURAL_FUNCAO.get(funcao, funcao).upper(), font=tema.fonte_pequena(),
-                         text_color=tema.COR_TEXTO_SECUNDARIO).grid(row=linha, column=0, columnspan=8,
-                                                                    sticky="w", pady=(8, 2))
+            titulo = ctk.CTkFrame(grade, fg_color="transparent")
+            titulo.grid(row=linha, column=0, columnspan=AGENTES_POR_LINHA, sticky="w", pady=(8, 2))
+            ctk.CTkFrame(titulo, width=3, height=16, corner_radius=0,
+                         fg_color=tema.COR_DESTAQUE).pack(side="left", padx=(4, 8))
+            ctk.CTkLabel(titulo, text=_PLURAL_FUNCAO.get(funcao, funcao).upper(), font=tema.fonte_display(19),
+                         height=20, text_color=tema.COR_TEXTO_SECUNDARIO).pack(side="left")
             linha += 1
             for i, agente in enumerate(agentes):
                 selecionado = agente.nome == atual
                 ctk.CTkButton(
                     grade, text=agente.nome, image=imagem_agente(agente.nome, TAMANHO_FOTO), compound="top",
-                    width=78, height=88, corner_radius=10, border_width=2, font=tema.fonte_pequena(),
+                    width=74, height=76, corner_radius=tema.RAIO, border_width=2, font=tema.fonte_pequena(),
                     fg_color=tema.COR_CARTAO_HOVER if selecionado else "transparent",
                     border_color=tema.COR_DESTAQUE if selecionado else tema.COR_CARTAO,
                     hover_color=tema.COR_CARTAO_HOVER, text_color=tema.COR_TEXTO,
                     command=lambda n=agente.nome: self._escolher(n),
-                ).grid(row=linha + i // AGENTES_POR_LINHA, column=i % AGENTES_POR_LINHA, padx=3, pady=3)
+                ).grid(row=linha + i // AGENTES_POR_LINHA, column=i % AGENTES_POR_LINHA, padx=2, pady=2)
             linha += (len(agentes) - 1) // AGENTES_POR_LINHA + 1
 
-        ctk.CTkButton(self, text="Cancelar", width=110, fg_color="transparent", border_width=1,
-                      border_color=tema.COR_BORDA, text_color=tema.COR_TEXTO_SECUNDARIO,
-                      hover_color=tema.COR_CARTAO_HOVER, command=self.destroy).pack(pady=(4, 16))
+        botao_secundario(self, "Cancelar", self.destroy, largura=120, altura=34).pack(pady=(6, 18))
         self.bind("<Escape>", lambda _: self.destroy())
 
         # Centraliza sobre a janela principal e bloqueia o resto do app enquanto aberta.

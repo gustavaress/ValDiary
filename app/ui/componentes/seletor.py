@@ -22,8 +22,8 @@ class SeletorBotoes(ctk.CTkFrame):
 
         for coluna, (valor, rotulo) in enumerate(opcoes):
             botao = ctk.CTkButton(
-                self, text=rotulo, width=largura_botao, height=32, corner_radius=6,
-                font=tema.fonte_normal(), border_width=1, border_color=tema.COR_BORDA,
+                self, text=rotulo, width=largura_botao, height=32, corner_radius=tema.RAIO_BOTAO,
+                font=tema.fonte_forte(), border_width=1, border_color=tema.COR_BORDA,
                 command=lambda v=valor: self._clicar(v),
             )
             botao.grid(row=0, column=coluna, padx=(0, 4))
@@ -42,7 +42,7 @@ class SeletorBotoes(ctk.CTkFrame):
                 texto = tema.COR_FUNDO if valor in self._cores else "#FFFFFF"
                 botao.configure(fg_color=cor, hover_color=cor, text_color=texto)
             else:
-                botao.configure(fg_color=tema.COR_FUNDO, hover_color=tema.COR_BORDA,
+                botao.configure(fg_color=tema.COR_CAMPO, hover_color=tema.COR_BORDA,
                                 text_color=tema.COR_TEXTO_SECUNDARIO)
 
     def get(self):

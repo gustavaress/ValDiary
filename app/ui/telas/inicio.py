@@ -9,6 +9,7 @@ from app.analysis.resumo import resumir, sequencia_atual
 from app.storage import ArquivoCorrompidoError
 from app.storage.semanas import periodo_semana, semana_da_data
 from app.ui import tema
+from app.ui.componentes.botoes import botao_primario
 from app.ui.componentes import CartaoInfo
 from app.ui.formatacao import data_extensa, data_tabela, numero
 from app.ui.telas.base import TelaBase
@@ -43,11 +44,8 @@ class TelaInicio(TelaBase):
         for coluna, cartao in enumerate((self._hoje, self._semana, self._sequencia, self._ranking)):
             cartao.grid(row=0, column=coluna, sticky="nsew", padx=6, pady=6)
 
-        self._botao = ctk.CTkButton(
-            area, height=44, width=260, font=tema.fonte_secao(),
-            fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-            command=lambda: self.janela.abrir_registro(date.today()),
-        )
+        self._botao = botao_primario(area, "", lambda: self.janela.abrir_registro(date.today()),
+                                     largura=300, altura=46)
         self._botao.grid(row=1, column=0, columnspan=2, sticky="w", padx=6, pady=(14, 24))
 
         # Semana atual
@@ -63,7 +61,7 @@ class TelaInicio(TelaBase):
             self._indicadores[chave] = cartao
 
         # Último registro
-        ultimo = ctk.CTkFrame(area, fg_color=tema.COR_CARTAO, corner_radius=12,
+        ultimo = ctk.CTkFrame(area, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                               border_width=1, border_color=tema.COR_BORDA)
         ultimo.grid(row=6, column=0, columnspan=4, sticky="ew", padx=6, pady=(18, 6))
         self._ultimo_titulo = ctk.CTkLabel(ultimo, text="", font=tema.fonte_secao(), text_color=tema.COR_TEXTO)

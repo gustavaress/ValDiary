@@ -14,7 +14,7 @@ from app.analysis.dataframe import filtrar_periodo, registros_para_dataframe
 from app.analysis.filtros import filtrar
 from app.ui import tema
 from app.ui.componentes import CartaoInfo, Secao, Tabela
-from app.ui.componentes.grafico import SERIE_1, SERIE_2, Grafico
+from app.ui.componentes.grafico import SERIE_BONS, SERIE_RUINS, Grafico
 from app.ui.formatacao import numero, valor_metrica
 from app.ui.telas.base import TelaBase
 
@@ -68,7 +68,7 @@ class TelaComparacao(TelaBase):
         for coluna, cartao in enumerate((self._cartao_bons, self._cartao_ruins, self._cartao_outros)):
             cartao.grid(row=0, column=coluna, sticky="nsew", padx=6, pady=6)
 
-        self._aviso = ctk.CTkFrame(area, fg_color=tema.COR_CARTAO, corner_radius=12,
+        self._aviso = ctk.CTkFrame(area, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                                    border_width=1, border_color=tema.COR_AVISO)
         self._texto_aviso = ctk.CTkLabel(self._aviso, text="", justify="left", font=tema.fonte_normal(),
                                          text_color=tema.COR_AVISO, wraplength=820)
@@ -173,8 +173,8 @@ class TelaComparacao(TelaBase):
         posicoes = list(range(len(linhas)))
         pontos = []
         for deslocamento, cor, rotulo, atributo_media, atributo_n in (
-            (-altura / 2, SERIE_1, "Dias bons", "media_bons", "n_bons"),
-            (altura / 2, SERIE_2, "Dias ruins", "media_ruins", "n_ruins"),
+            (-altura / 2, SERIE_BONS, "Dias bons", "media_bons", "n_bons"),
+            (altura / 2, SERIE_RUINS, "Dias ruins", "media_ruins", "n_ruins"),
         ):
             medias = [getattr(l, atributo_media) or 0 for l in linhas]
             y = [p + deslocamento for p in posicoes]

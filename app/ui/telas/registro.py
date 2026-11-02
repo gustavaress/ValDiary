@@ -19,6 +19,7 @@ from app.models.ranking import Ranking, aplicar_partidas
 from app.storage import ArquivoCorrompidoError, RegistroDuplicadoError, VersaoIncompativelError
 from app.storage.rascunho import apagar_rascunho, salvar_rascunho
 from app.ui import conversao, tema
+from app.ui.componentes.botoes import botao_icone, botao_primario, botao_secundario
 from app.ui.componentes import (
     CampoEntrada,
     CampoHorario,
@@ -73,7 +74,7 @@ class TelaRegistro(TelaBase):
         self._montar_classificacao()
 
         abas = ctk.CTkTabview(
-            self.corpo, fg_color="transparent", corner_radius=12,
+            self.corpo, fg_color="transparent", corner_radius=tema.RAIO,
             segmented_button_fg_color=tema.COR_CARTAO,
             segmented_button_selected_color=tema.COR_DESTAQUE,
             segmented_button_selected_hover_color=tema.COR_DESTAQUE_HOVER,
@@ -81,6 +82,9 @@ class TelaRegistro(TelaBase):
             segmented_button_unselected_hover_color=tema.COR_CARTAO_HOVER,
             anchor="w",
         )
+        # O CTkTabview não expõe a fonte/altura das abas no construtor: ajustamos o
+        # botão segmentado interno para seguir a tipografia display do app.
+        abas._segmented_button.configure(font=tema.fonte_display(20), height=36)
         abas.grid(row=2, column=0, sticky="nsew")
         self._abas = abas
         self._areas: dict[str, ctk.CTkScrollableFrame] = {}
@@ -89,6 +93,8 @@ class TelaRegistro(TelaBase):
                              ("Partidas", self._montar_aba_partidas),
                              ("Anotações", self._montar_aba_anotacoes)):
             abas.add(nome)
+            # Respiro lateral em cada aba (o texto em Bebas é estreito).
+            abas._segmented_button._buttons_dict[nome].configure(width=120)
             area = ctk.CTkScrollableFrame(abas.tab(nome), fg_color="transparent")
             area.pack(fill="both", expand=True)
             self._areas[nome] = area
@@ -99,21 +105,18 @@ class TelaRegistro(TelaBase):
     # --- Montagem ---------------------------------------------------------
 
     def _montar_barra_superior(self) -> None:
-        barra = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=12,
+        barra = ctk.CTkFrame(self.corpo, fg_color=tema.COR_CARTAO, corner_radius=tema.RAIO,
                              border_width=1, border_color=tema.COR_BORDA)
         barra.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         barra.grid_columnconfigure(5, weight=1)
 
         def botao(texto, comando, largura=36):
-            return ctk.CTkButton(barra, text=texto, width=largura, height=34,
-                                 fg_color=tema.COR_FUNDO, hover_color=tema.COR_BORDA,
-                                 border_width=1, border_color=tema.COR_BORDA,
-                                 text_color=tema.COR_TEXTO, command=comando)
+            return botao_icone(barra, texto, comando, largura=largura, destaque=True)
 
         self._botao_anterior = botao("◀", lambda: self._andar_data(-1))
         self._botao_anterior.grid(row=0, column=0, padx=(14, 4), pady=14)
         self._entrada_data = ctk.CTkEntry(barra, width=120, height=34, justify="center",
-                                          fg_color=tema.COR_FUNDO, border_color=tema.COR_BORDA,
+                                          fg_color=tema.COR_CAMPO, border_color=tema.COR_BORDA,
                                           font=tema.fonte_normal())
         self._entrada_data.grid(row=0, column=1, padx=4)
         self._entrada_data.bind("<Return>", lambda _: self._data_digitada())
@@ -135,13 +138,9 @@ class TelaRegistro(TelaBase):
         # na mesma linha dos botões não sobra espaço para mensagens mais longas.
         self._rotulo_status = ctk.CTkLabel(barra, text="", font=tema.fonte_pequena(), anchor="w",
                                            text_color=tema.COR_TEXTO_SECUNDARIO)
-        ctk.CTkButton(barra, text="+ Novo registro", width=130, height=38, font=tema.fonte_normal(),
-                      fg_color="transparent", border_width=1, border_color=tema.COR_BORDA,
-                      text_color=tema.COR_TEXTO, hover_color=tema.COR_CARTAO_HOVER,
-                      command=self.novo_registro).grid(row=0, column=6, padx=(0, 8))
-        ctk.CTkButton(barra, text="Salvar", width=110, height=38, font=tema.fonte_secao(),
-                      fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-                      command=self.salvar).grid(row=0, column=7, padx=(0, 14))
+        botao_secundario(barra, "+ Novo registro", self.novo_registro, largura=140, altura=40).grid(
+            row=0, column=6, padx=(0, 8))
+        botao_primario(barra, "Salvar", self.salvar, largura=120, altura=40).grid(row=0, column=7, padx=(0, 14))
 
     def _montar_classificacao(self) -> None:
         linha = ctk.CTkFrame(self.corpo, fg_color="transparent")

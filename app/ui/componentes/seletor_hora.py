@@ -16,7 +16,7 @@ class SeletorHora(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         self._ao_mudar = ao_mudar
         estilo = dict(width=66, height=34, dynamic_resizing=False, font=tema.fonte_normal(),
-                      fg_color=tema.COR_FUNDO, button_color=tema.COR_FUNDO,
+                      fg_color=tema.COR_CAMPO, button_color=tema.COR_CAMPO,
                       button_hover_color=tema.COR_BORDA, dropdown_fg_color=tema.COR_CARTAO,
                       text_color=tema.COR_TEXTO, command=lambda _: self._mudou())
         self._hora = ctk.CTkOptionMenu(self, values=HORAS, **estilo)
