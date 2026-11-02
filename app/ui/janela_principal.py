@@ -1,13 +1,17 @@
 """Janela principal: menu lateral + área onde as telas são exibidas."""
 
 import os
+from datetime import date
+from pathlib import Path
 from tkinter import messagebox
 
 import customtkinter as ctk
 
 from app import config
 from app.storage import RepositorioDiario
+from app.storage.rascunho import apagar_rascunho, carregar_rascunho
 from app.ui import tema
+from app.ui.formatacao import data_curta
 from app.ui.telas import (
     TelaComparacao,
     TelaDashboard,
@@ -21,7 +25,7 @@ from app.ui.telas.base import TelaBase
 # (chave, rótulo no menu, classe da tela). A ordem aqui é a ordem do menu.
 TELAS = [
     ("inicio", "Início", TelaInicio),
-    ("registro", "Novo registro", TelaRegistro),
+    ("registro", "Registro diário", TelaRegistro),
     ("historico", "Histórico", TelaHistorico),
     ("dashboard", "Dashboard", TelaDashboard),
     ("comparacao", "Comparação", TelaComparacao),
@@ -30,9 +34,11 @@ TELAS = [
 
 
 class JanelaPrincipal(ctk.CTk):
-    def __init__(self, repositorio: RepositorioDiario):
+    def __init__(self, repositorio: RepositorioDiario,
+                 arquivo_rascunho: Path = config.ARQUIVO_RASCUNHO):
         super().__init__(fg_color=tema.COR_FUNDO)
         self.repositorio = repositorio
+        self.arquivo_rascunho = arquivo_rascunho
 
         self.title(config.NOME_APP)
         self.geometry("1200x760")
@@ -51,8 +57,9 @@ class JanelaPrincipal(ctk.CTk):
         self._area.grid_rowconfigure(0, weight=1)
 
         self.mostrar_tela("inicio")
+        self.protocol("WM_DELETE_WINDOW", self._ao_fechar)
         # Espera a janela aparecer antes de mostrar avisos.
-        self.after(300, self._avisar_arquivos_com_problema)
+        self.after(300, self._verificacoes_iniciais)
 
     # --- Menu lateral -----------------------------------------------------
 
@@ -110,7 +117,43 @@ class JanelaPrincipal(ctk.CTk):
                 text_color=tema.COR_DESTAQUE if ativo else tema.COR_TEXTO_SECUNDARIO,
             )
 
+    def abrir_registro(self, data: date) -> None:
+        """Abre a tela de registro já na data indicada."""
+        self.mostrar_tela("registro")
+        self._telas["registro"].abrir_data(data)
+
+    def _ao_fechar(self) -> None:
+        # Garante que o que foi digitado e ainda não salvo vire rascunho.
+        if "registro" in self._telas:
+            self._telas["registro"].salvar_rascunho_agora()
+        self.destroy()
+
     # --- Avisos -----------------------------------------------------------
+
+    def _verificacoes_iniciais(self) -> None:
+        self._avisar_arquivos_com_problema()
+        self._oferecer_rascunho()
+
+    def _oferecer_rascunho(self) -> None:
+        rascunho = carregar_rascunho(self.arquivo_rascunho)
+        if rascunho is None:
+            return
+        formulario = rascunho["formulario"]
+        try:
+            data = date.fromisoformat(formulario["data"])
+        except (KeyError, TypeError, ValueError):
+            apagar_rascunho(self.arquivo_rascunho)
+            return
+        if messagebox.askyesno(
+            "Registro não salvo",
+            f"Existe um registro de {data_curta(data)} que não foi salvo "
+            "(o app foi fechado antes).\n\nDeseja recuperá-lo?",
+            parent=self,
+        ):
+            self.mostrar_tela("registro")
+            self._telas["registro"].recuperar_rascunho(formulario)
+        else:
+            apagar_rascunho(self.arquivo_rascunho)
 
     def _avisar_arquivos_com_problema(self) -> None:
         _, problemas = self.repositorio.carregar_todos()

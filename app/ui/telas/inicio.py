@@ -28,7 +28,7 @@ class TelaInicio(TelaBase):
         self._botao = ctk.CTkButton(
             self.corpo, height=44, width=260, font=tema.fonte_secao(),
             fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
-            command=lambda: self.janela.mostrar_tela("registro"),
+            command=lambda: self.janela.abrir_registro(date.today()),
         )
         self._botao.grid(row=1, column=0, sticky="w", pady=24)
 
