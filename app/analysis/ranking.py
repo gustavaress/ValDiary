@@ -30,7 +30,7 @@ class RankingDoDia:
 
 
 def variacoes_do_dia(registro: RegistroDia) -> list[int]:
-    return [p.rr for p in registro.valorant.partidas if p.rr is not None]
+    return [p.rr for p in registro.valorant.partidas if p.rr is not None and not p.smurf]
 
 
 def evolucao_ranking(registros: list[RegistroDia], definicoes: list[DefinicaoRanking]) -> list[RankingDoDia]:

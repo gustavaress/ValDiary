@@ -8,6 +8,7 @@ import re
 
 from app.config import ESCALA_MAX, ESCALA_MIN
 from app.models.registro import RESULTADOS, RegistroDia
+from app.models.ranking import ELOS
 
 _FORMATO_HORA = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
@@ -78,6 +79,10 @@ def validar_registro(registro: RegistroDia) -> list[str]:
             erros.append(f"{rotulo}: resultado inválido.")
         if partida.rr is not None and not (-100 <= partida.rr <= 100):
             erros.append(f"{rotulo} (RR): deve estar entre -100 e +100.")
+        if partida.smurf and partida.rr is not None:
+            erros.append(f"{rotulo}: partida na smurf não vale RR para o ranking (deixe o RR vazio).")
+        if partida.elo_inimigos is not None and partida.elo_inimigos not in ELOS:
+            erros.append(f"{rotulo}: elo dos inimigos inválido.")
 
     _checar_nao_negativo(erros, "Aim routine (duração)", jogo.aim_routine.duracao_min)
     return erros

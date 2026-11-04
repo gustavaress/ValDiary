@@ -78,7 +78,8 @@ def registro_para_formulario(registro: RegistroDia) -> dict:
         "partidas": [
             {"agente": p.agente or "", "mapa": p.mapa, "resultado": p.resultado, "abates": para_campo(p.abates),
              "mortes": para_campo(p.mortes), "assistencias": para_campo(p.assistencias),
-             "hs_pct": para_campo(p.hs_pct), "acs": para_campo(p.acs), "rr": _rr_para_campo(p.rr)}
+             "hs_pct": para_campo(p.hs_pct), "acs": para_campo(p.acs), "rr": _rr_para_campo(p.rr),
+             "smurf": p.smurf, "elo_inimigos": p.elo_inimigos}
             for p in jogo.partidas
         ],
         # Não tem campo na tela: só atravessa o formulário para não se perder ao salvar.
@@ -253,7 +254,10 @@ def _ler_partidas(lista: list[dict], ler: _Leitor) -> list[Partida]:
             assistencias=ler.inteiro_valor(dados.get("assistencias"), f"{rotulo} (assistências)"),
             hs_pct=ler.decimal_valor(dados.get("hs_pct"), f"{rotulo} (HS%)"),
             acs=ler.decimal_valor(dados.get("acs"), f"{rotulo} (ACS)"),
-            rr=ler.inteiro_valor(dados.get("rr"), f"{rotulo} (RR)"),
+            # Na smurf o RR não vale para o ranking (o campo fica desativado na tela).
+            rr=None if dados.get("smurf") else ler.inteiro_valor(dados.get("rr"), f"{rotulo} (RR)"),
+            smurf=bool(dados.get("smurf")),
+            elo_inimigos=dados.get("elo_inimigos") or None,
         ))
     return partidas
 

@@ -2,7 +2,7 @@
 
 import customtkinter as ctk
 
-from app.models.ranking import aplicar_partidas, variacao_real
+from app.models.ranking import ELOS, aplicar_partidas, variacao_real
 from app.ui import conversao, tema
 from app.ui.componentes import CampoTextoLongo, ListaPartidas, Secao, SeletorBotoes
 from app.ui.componentes.emblema_rank import imagem_rank
@@ -87,6 +87,7 @@ class AbaPartidas:
                 linha2.append(f"ACS médio {numero(resumo.acs, 0)}")
             agentes = "  ·  ".join(f"{nome} ×{n}" if n else nome for nome, n in resumo.agentes.items())
             linhas += ["  ·  ".join(linha1), "  ·  ".join(linha2), f"Agentes: {agentes}" if agentes else ""]
+            linhas.append(self._texto_smurf_e_inimigos(formulario))
         linhas.append(self._texto_ranking(formulario, resumo.rr))
 
         linhas = [linha for linha in linhas if linha]
@@ -104,6 +105,19 @@ class AbaPartidas:
                 "digitados na época. Se você adicionar partidas, elas passam a valer no lugar desses totais."))
         else:
             self._rotulo_legado.configure(text="")
+
+    @staticmethod
+    def _texto_smurf_e_inimigos(formulario: dict) -> str:
+        """Ex.: "Elo médio dos inimigos: Ascendente 2  ·  1 na smurf (sem RR, fora do ranking)"."""
+        partidas = formulario.get("partidas") or []
+        elos = [ELOS.index(p["elo_inimigos"]) for p in partidas if p.get("elo_inimigos") in ELOS]
+        partes = []
+        if elos:
+            partes.append(f"Elo médio dos inimigos: {ELOS[round(sum(elos) / len(elos))]}")
+        na_smurf = sum(1 for p in partidas if p.get("smurf"))
+        if na_smurf:
+            partes.append(f"{na_smurf} na smurf (sem RR, fora do ranking)")
+        return "  ·  ".join(partes)
 
     def _texto_ranking(self, formulario: dict, rr_do_dia: int | None) -> str:
         """Devolve "RR das partidas: -20, +17" e mostra, ao lado do ranking do

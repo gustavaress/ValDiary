@@ -49,7 +49,8 @@ class LinhaDesempenho:
 
 
 def desempenho_por(registros: list[RegistroDia], atributo: str) -> list[LinhaDesempenho]:
-    """atributo: "mapa" ou "agente". Ordenado pelo número de partidas (mais jogados primeiro)."""
+    """atributo da Partida: "mapa", "agente", "conta" (Main/Smurf) ou "tier_inimigos".
+    Ordenado pelo número de partidas (mais jogados primeiro)."""
     grupos: dict[str, list[Partida]] = {}
     for registro in registros:
         for partida in registro.valorant.partidas:

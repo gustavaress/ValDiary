@@ -42,6 +42,9 @@ LEGENDA = {
     "treino": "'valorant.aquecimento' (true/false) e 'aquecimento_descricao' descrevem o aquecimento antes das "
               "partidas. 'valorant.aim_routine' traz se o treino de mira foi feito ('feita'), a duração em "
               "minutos e os exercícios (nome, meta e 'feito'). Cada partida também tem o 'mapa'.",
+    "smurf_e_adversarios": "Cada partida tem 'smurf' (true = jogada na conta secundária: conta para as "
+                           "estatísticas, mas não tem RR nem mexe no ranking) e 'elo_inimigos' (elo médio "
+                           "dos inimigos naquela partida, estimado pelo jogador; null = não informado).",
     "refeicoes": "'realizada': true = teve a refeição; null = não marcada (não teve ou não registrou).",
     "horarios": "Formato HH:MM (24h). 'dormiu_as' pode ser depois da meia-noite "
                 "(ex.: 01:30 = foi dormir de madrugada).",

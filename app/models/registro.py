@@ -157,12 +157,23 @@ class Partida:
     acs: float | None = None
     rr: int | None = None  # pontos de ranking ganhos (+) ou perdidos (-) na partida
     mapa: str | None = None  # no fim para não mudar a ordem dos campos já existentes
+    smurf: bool = False  # partida na conta secundária: não vale RR para o ranking
+    elo_inimigos: str | None = None  # elo médio dos inimigos (um dos ELOS)
 
     @property
     def kd(self) -> float | None:
         if self.abates is None or self.mortes is None:
             return None
         return round(self.abates / max(self.mortes, 1), 2)
+
+    @property
+    def conta(self) -> str:
+        return "Smurf" if self.smurf else "Main"
+
+    @property
+    def tier_inimigos(self) -> str | None:
+        """Só o tier do elo médio inimigo ("Ascendente 3" -> "Ascendente")."""
+        return self.elo_inimigos.split(" ")[0] if self.elo_inimigos else None
 
 
 def _razao(numerador: int | None, mortes: int | None) -> float | None:
@@ -247,7 +258,7 @@ def resumir_partidas(partidas: list[Partida]) -> ResumoJogo:
         acs=_media(p.acs for p in partidas),
         agentes=agentes,
         partidas_com_resultado=len(resultados) or None,
-        rr=_soma(p.rr for p in partidas),
+        rr=_soma(p.rr for p in partidas if not p.smurf),  # smurf não vale RR
     )
 
 

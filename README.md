@@ -21,6 +21,7 @@ Tudo funciona **localmente**: sem servidor, sem conta, sem internet. Os dados fi
 | 🎨 | **Visual no estilo Valorant** (v3): grafite e vermelho, tipografia condensada, ícone próprio | ✅ |
 | 📝 | **Registro diário** em abas (Rotina / Valorant / Partidas / Aim Routine / Anotações), com notas de 1 a 10 por clique | ✅ |
 | 🗺️ | **Mapa por partida** e tabelas de desempenho por mapa e por agente (v4) | ✅ |
+| 🎭 | **Smurf** por partida (conta nas estatísticas, sem RR no ranking) e **elo médio dos inimigos**, com tabelas Main x Smurf e por elo inimigo no Dashboard | ✅ |
 | 🎯 | **Aim Routine**: checklist com a sua rotina padrão, duração e contador semanal no Dashboard (v4) | ✅ |
 | 🔥 | **Aquecimento** antes das partidas, com descrição (v4) | ✅ |
 | 💡 | **Insights** na tela inicial: o que mais muda entre seus dias bons e ruins (v4) | ✅ |

@@ -3,13 +3,16 @@
 import customtkinter as ctk
 
 from app.models.mapas import MAPAS
+from app.models.ranking import ELOS
 from app.ui import tema
 from app.ui.componentes.botoes import botao_icone, botao_primario
 from app.ui.componentes.bandeja_agentes import escolher_agente, imagem_agente
+from app.ui.componentes.emblema_rank import imagem_rank
 from app.ui.componentes.formulario import nova_entrada
 from app.ui.componentes.seletor import SeletorBotoes
 
 SEM_MAPA = "Mapa?"
+SEM_ELO = "Não sei"
 RESULTADOS = [("vitoria", "Vitória"), ("derrota", "Derrota"), ("empate", "Empate")]
 CORES_RESULTADO = {"vitoria": tema.COR_SUCESSO, "derrota": tema.COR_DESTAQUE, "empate": tema.COR_TEXTO_SECUNDARIO}
 
@@ -47,6 +50,14 @@ class CartaoPartida(ctk.CTkFrame):
         self._resultado.set(valores.get("resultado"))
         self._resultado.grid(row=0, column=3, padx=6, pady=(10, 4), sticky="w")
 
+        # Smurf: a partida conta para as estatísticas, mas não tem RR nem mexe no ranking.
+        self._smurf = ctk.BooleanVar(value=bool(valores.get("smurf")))
+        ctk.CTkCheckBox(self, text="Smurf", variable=self._smurf, font=tema.fonte_forte(),
+                        checkbox_width=20, checkbox_height=20, corner_radius=tema.RAIO_BOTAO,
+                        fg_color=tema.COR_DESTAQUE, hover_color=tema.COR_DESTAQUE_HOVER,
+                        border_color=tema.COR_BORDA_FORTE, text_color=tema.COR_TEXTO,
+                        command=self._mudou_smurf).grid(row=0, column=4, padx=6, pady=(10, 4), sticky="w")
+
         botao_icone(self, "✕", lambda: lista.remover(self)).grid(row=0, column=5, padx=(0, 10), pady=(10, 4))
 
         estatisticas = ctk.CTkFrame(self, fg_color="transparent")
@@ -63,10 +74,27 @@ class CartaoPartida(ctk.CTkFrame):
                 entrada.insert(0, valores[chave])
             entrada.bind("<KeyRelease>", lambda _: lista.mudou(), add="+")
             self._entradas[chave] = entrada
+
+        bloco = ctk.CTkFrame(estatisticas, fg_color="transparent")
+        bloco.pack(side="left", padx=(8, 0))
+        ctk.CTkLabel(bloco, text="Elo médio inimigo", font=tema.fonte_pequena(),
+                     text_color=tema.COR_TEXTO_SECUNDARIO).pack(anchor="w")
+        linha = ctk.CTkFrame(bloco, fg_color="transparent")
+        linha.pack(anchor="w")
+        self._elo_inimigos = ctk.CTkOptionMenu(linha, values=[SEM_ELO, *ELOS], width=140, height=30,
+                                               dynamic_resizing=False, font=tema.fonte_normal(),
+                                               command=lambda _: self._mudou_elo())
+        self._elo_inimigos.set(valores.get("elo_inimigos") or SEM_ELO)
+        self._elo_inimigos.pack(side="left")
+        self._emblema_inimigos = ctk.CTkLabel(linha, text="", width=30, height=30)
+        self._emblema_inimigos.pack(side="left", padx=(6, 0))
+
         self._kd = ctk.CTkLabel(estatisticas, text="", font=tema.fonte_secao(), text_color=tema.COR_DESTAQUE)
-        self._kd.pack(side="left", padx=(10, 0), pady=(16, 0))
+        self._kd.pack(side="left", padx=(14, 0), pady=(16, 0))
 
         self._pintar_agente()
+        self._pintar_smurf()
+        self._pintar_elo()
 
     def numerar(self, numero: int) -> None:
         self._titulo.configure(text=f"Partida {numero}")
@@ -84,6 +112,24 @@ class CartaoPartida(ctk.CTkFrame):
             text=f"  {self._agente}" if self._agente else "Escolher agente",
             image=imagem, text_color=tema.COR_TEXTO if self._agente else tema.COR_TEXTO_SECUNDARIO,
         )
+
+    def _mudou_smurf(self) -> None:
+        if self._smurf.get():
+            self._entradas["rr"].delete(0, "end")  # na smurf o RR não vale
+        self._pintar_smurf()
+        self._lista.mudou()
+
+    def _pintar_smurf(self) -> None:
+        self._entradas["rr"].configure(state="disabled" if self._smurf.get() else "normal",
+                                       fg_color=tema.COR_CARTAO if self._smurf.get() else tema.COR_CAMPO)
+
+    def _mudou_elo(self) -> None:
+        self._pintar_elo()
+        self._lista.mudou()
+
+    def _pintar_elo(self) -> None:
+        elo = self._elo_inimigos.get()
+        self._emblema_inimigos.configure(image=imagem_rank(elo, 28) if elo != SEM_ELO else None)
 
     def atualizar_kd(self) -> None:
         """K/D desta partida, calculado na hora (vazio se K ou D não forem números)."""
@@ -103,6 +149,8 @@ class CartaoPartida(ctk.CTkFrame):
         dados = {"agente": self._agente or "", "mapa": None if mapa == SEM_MAPA else mapa,
                  "resultado": self._resultado.get()}
         dados.update({chave: entrada.get().strip() for chave, entrada in self._entradas.items()})
+        elo = self._elo_inimigos.get()
+        dados.update(smurf=self._smurf.get(), elo_inimigos=None if elo == SEM_ELO else elo)
         return dados
 
 

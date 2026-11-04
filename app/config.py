@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 
 NOME_APP = "ValDiary · Diário de Performance"
-VERSAO_APP = "4.1"
+VERSAO_APP = "4.2"
 
 # Versão do formato dos arquivos JSON. Sempre que a estrutura mudar de forma
 # incompatível, incrementamos este número e escrevemos uma migração.
-VERSAO_SCHEMA = 5
+VERSAO_SCHEMA = 6
 
 # Escala usada em todas as notas subjetivas (sono, disposição, mira...).
 ESCALA_MIN = 1

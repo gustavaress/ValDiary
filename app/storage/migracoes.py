@@ -68,7 +68,13 @@ def _v4_para_v5(documento: dict) -> dict:
     return documento
 
 
-_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3, 3: _v3_para_v4, 4: _v4_para_v5}
+def _v5_para_v6(documento: dict) -> dict:
+    """v6: partida na smurf (sem RR) e elo médio dos inimigos. Partidas antigas: main, sem elo."""
+    documento["versao_schema"] = 6
+    return documento
+
+
+_MIGRACOES = {1: _v1_para_v2, 2: _v2_para_v3, 3: _v3_para_v4, 4: _v4_para_v5, 5: _v5_para_v6}
 
 
 def migrar_documento(documento: dict) -> dict:

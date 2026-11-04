@@ -91,11 +91,13 @@ class TelaDashboard(TelaBase):
                    ("kd", "K/D", 50, "center"), ("acs", "ACS", 50, "center"), ("hs", "HS%", 50, "center"),
                    ("rr", "RR/jogo", 72, "center")]
         self._tabelas_desempenho = {}
-        for coluna, (atributo, titulo) in enumerate((("mapa", "Desempenho por mapa"),
-                                                     ("agente", "Desempenho por agente"))):
+        # (atributo da Partida, título, cabeçalho da 1ª coluna)
+        grupos = [("mapa", "Desempenho por mapa", "Mapa"), ("agente", "Desempenho por agente", "Agente"),
+                  ("conta", "Main x Smurf", "Conta"), ("tier_inimigos", "Por elo dos inimigos", "Elo inimigo")]
+        for posicao, (atributo, titulo, cabecalho) in enumerate(grupos):
             secao = Secao(tabelas, titulo, "Só partidas com esse dado registrado. Ordenado pelo mais jogado.")
-            secao.grid(row=0, column=coluna, sticky="nsew", padx=6, pady=6)
-            tabela = Tabela(secao.conteudo, [(c, atributo.capitalize() if c == "nome" else t, l, a)
+            secao.grid(row=posicao // 2, column=posicao % 2, sticky="nsew", padx=6, pady=6)
+            tabela = Tabela(secao.conteudo, [(c, cabecalho if c == "nome" else t, l, a)
                                              for c, t, l, a in colunas], altura_automatica=True)
             tabela.pack(fill="x")
             self._tabelas_desempenho[atributo] = tabela
