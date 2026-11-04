@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 NOME_APP = "ValDiary · Diário de Performance"
-VERSAO_APP = "4.2"
+VERSAO_APP = "4.2.1"
 
 # Versão do formato dos arquivos JSON. Sempre que a estrutura mudar de forma
 # incompatível, incrementamos este número e escrevemos uma migração.

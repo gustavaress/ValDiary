@@ -6,5 +6,5 @@ Partidas antigas com mapas que saíram daqui continuam valendo normalmente.
 
 MAPAS = [
     "Abyss", "Ascent", "Bind", "Breeze", "Corrode", "Fracture", "Haven",
-    "Icebox", "Lotus", "Pearl", "Split", "Sunset",
+    "Icebox", "Lotus", "Pearl", "Split", "Summit", "Sunset",
 ]
